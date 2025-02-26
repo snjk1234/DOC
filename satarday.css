@@ -5,7 +5,7 @@ body {
     position: relative;
     background: 
         linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)),
-        url('assets/logo.jpg') center;
+        url('logo.jpg') center;
     background-attachment: fixed;
     min-height: 100vh;
 }
@@ -17,7 +17,7 @@ body::after {
     left: 0;
     right: 0;
     bottom: 0;
-    background: url('assets/logo.jpg') center;
+    background: url('logo.jpg') center;
     z-index: 0; /* طبقة خلفية */
     transition: opacity 0.3s ease;
     opacity: 0.25 !important;       /* زيادة العتامة */
@@ -53,7 +53,7 @@ body:hover::after {
     left: 20px;
     width: 100px;
     height: 40px;
-    background: url('assets/logo.jpg') center/contain no-repeat;
+    background: url('logo.jpg') center/contain no-repeat;
     opacity: 0.8;
     opacity: 0.9 !important;        /* وضوح أعلى */
     width: 130px !important;        /* تكبير الحجم */
