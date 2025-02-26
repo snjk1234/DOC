@@ -125,10 +125,10 @@ button {
 
 .logout-btn {
     position: fixed;
-    top: 615px; /* تحت الشعار */
-    left: 25px;
-    padding: 15px 75px;
-    background: #017cff !important;
+    top: 200px; /* تحت الشعار */
+    left: 20px;
+    padding: 15px 30px;
+    background: #ff010188 !important;
     font-size: 18px;
     z-index: 1000;
 }

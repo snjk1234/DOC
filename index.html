@@ -27,6 +27,7 @@
 
     <!-- لوحة التحكم -->
     <div class="dashboard" id="dashboard">
+        <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
         <div class="building-buttons">
             <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
             <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
@@ -60,10 +61,11 @@
                 <div class="input-group">
                     <select id="comboBox"></select>
                 </div>
-                <button onclick="saveData()" style="padding: 15px 25px; font-size: 16px;">حفظ</button>
-                <button onclick="updateData()" style="padding: 15px 25px; font-size: 16px;">تعديل</button>
-                <button onclick="goBack()" style="padding: 15px 25px; font-size: 16px;">رجوع</button>
-                <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
+                <div class="form-actions">
+                    <button onclick="saveData()">حفظ</button>
+                    <button onclick="updateData()">تعديل</button>
+                    <button onclick="goBack()">رجوع</button>
+                </div>
             </div>
 
             <div class="listview" id="listView">
