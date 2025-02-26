@@ -1,0 +1,11 @@
+button {
+    padding: 15px;
+    background: #017cff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 18px;
+    transition: all 0.3s ease-in-out;
+}
