@@ -1,0 +1,297 @@
+body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 20px;
+    position: relative;
+    background: 
+        linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.9)),
+        url('logo.jpg') center;
+    background-attachment: fixed;
+    min-height: 100vh;
+}
+/* تأثيرات تفاعلية */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('logo.jpg') center;
+    z-index: -1;
+    transition: opacity 0.3s ease;
+
+    opacity: 0.15; /* زيادة الوضوح بنسبة 50% */
+
+    z-index: 0; /* طبقة خلفية */
+    opacity: 0.25 !important;       /* زيادة العتامة */
+    background-size: 25% !important; /* تكبير الحجم */
+    filter: contrast(1.2);          /* زيادة التباين */
+}
+
+body:hover::after {
+    opacity: 0.12;
+}
+
+.header-logo {
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    z-index: 1000;
+    transition: all 0.3s;
+    opacity: 1 !important;          /* إزالة الشفافية */
+    width: 150px !important;        /* زيادة الحجم */
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); /* إضافة ظل */
+}
+
+.header-logo:hover {
+    transform: scale(1.05);
+    opacity: 1;
+}
+
+/* شعار شاشة الدخول */
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 100px;
+    height: 40px;
+    background: url('logo.jpg') center/contain no-repeat;
+    opacity: 0.8;
+    opacity: 0.9 !important;        /* وضوح أعلى */
+    width: 130px !important;        /* تكبير الحجم */
+}
+.login-container {
+    width: 450px;
+    margin: 100px auto;
+    padding: 50px ;
+    border-radius: 25px;
+    background: rgba(0, 0, 0, 0.082) !important; /* شفافية 85% */
+    backdrop-filter: blur(5px); /* تأثير تمويه */
+    position: relative;
+    z-index: 1; /* طبقة أمامية */
+}
+.login-container h2{
+    text-align: center;
+    background: rgba(88, 88, 88, 0.082) !important; /* شفافية 85% */
+    font-size: 45px;
+    border-radius: 25px;
+}
+
+.dashboard {
+    display: none;
+    position: relative;
+    z-index: 1; /* طبقة أمامية */
+}
+.group-all{
+    display: flex;
+    gap: 10px;
+}
+.building-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 30px;
+    width: 30%;
+    background: rgba(255, 255, 255, 0.103) !important; /* شفافية 85% */
+    backdrop-filter: blur(5px); /* تأثير تمويه */
+}
+button.btt {
+width: 100%;
+padding: 12px;
+font-size: 20px;
+font-family: 'tajawal';
+border: none;
+border-radius: 8px;
+margin-top: 1rem;
+cursor: pointer;
+transition: all 0.3s;
+background: rgba(0, 0, 0, 0.253) !important; /* شفافية 85% */
+backdrop-filter: blur(5px); /* تأثير تمويه */
+}
+
+button.btt:active{
+    background: rgba(0, 0, 0, 0.363) !important; /* شفافية 85% */
+}
+
+button {
+    padding: 15px;
+    background: #017cff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.3s;
+    font-size: 18px;
+    transition: all 0.3s ease-in-out;
+}
+
+.logout-btn {
+    position: fixed;
+    top: 615px; /* تحت الشعار */
+    left: 25px;
+    padding: 15px 75px;
+    background: #017cff !important;
+    font-size: 18px;
+    z-index: 1000;
+}
+
+button:hover {
+    background: #3898ff;
+    transform: translateX(5px);
+}
+button:active{
+    background: #0050a5;
+}
+.form-container {
+    background: rgba(0, 0, 0, 0.062);
+    padding: 25px;
+    border-radius: 10px;
+    margin-top: 20px;
+    width: 30%;
+    border: 1px solid #cec6c6;
+    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.849);
+    background: rgba(0, 0, 0, 0.062) !important; /* شفافية 85% */
+    backdrop-filter: blur(5px); /* تأثير تمويه */
+}
+
+.input-group {
+    margin-bottom: 15px;
+    border: none;
+    transition: all 0.3s ease-in-out;
+
+}
+
+.group-all{
+    display: flex;
+}
+input, select {
+    width: 100%;
+    height: 40px;
+    padding: 10px;
+    margin: 1px;
+    border:none;
+    border-radius: 8px;
+    background-color: rgb(233, 230, 230);
+    border: 1px solid rgb(197, 194, 194);
+}
+.listview {
+    margin-top: 20px;
+    padding: 20px;
+    overflow-y: auto;
+    width: 70%; 
+    box-shadow: 0 4px 15px rgb(255, 255, 255);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.075) !important; /* شفافية 85% */
+    backdrop-filter: blur(5px); /* تأثير تمويه */
+}
+
+.list-item {
+    padding: 15px;
+    cursor: pointer;
+    transition: 0.3s;
+    background: rgba(212, 212, 212, 0.76);
+    font-family: 'tajawal';
+    margin: 10px 0;
+    padding: 15px;
+    border-radius: 8px;
+    backdrop-filter: blur(3px);
+}
+
+.input-group:hover{
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateX(10px);
+}
+
+.list-item:hover {
+    background: rgba(0, 0, 0, 075);
+    transform: translateX(10px);
+}
+select {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid #404040;
+}
+
+/* تنسيقات متقدمة للـ comboBox */
+select#comboBox {
+    width: 100%;
+    height: 40px;
+    padding: 8px;
+    border-radius: 4px;
+    background-color: rgb(233, 230, 230);
+    border: 1px solid rgb(197, 194, 194);
+    color: #050505 !important;
+    font-size: 16px;
+    cursor: pointer;
+    appearance: none;
+    -webkit-appearance: none;
+    background-position:
+        calc(100% - 15px) center,
+        calc(100% - 10px) center !important;
+    background-size: 5px 5px, 5px 5px !important;
+    background-repeat: no-repeat;
+    transition: all 0.3s ease-in-out;
+}
+
+select#comboBox:hover {
+    border-color: #9aa8bf !important;
+    border: #7a7a7a;
+}
+
+select#comboBox:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(125, 141, 167, 0.3) !important;
+}
+
+/* تنسيق خيارات القائمة */
+select#comboBox option {
+    background: #2d2d2d !important;
+    color: #fff !important;
+    padding: 12px !important;
+    border-bottom: 1px solid #404040 !important;
+}
+
+select#comboBox option:hover {
+    background: #7d8da7 !important;
+    color: #1a1a1a !important;
+}
+
+select#comboBox option:checked {
+    background: #65758f !important;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.data-table th,
+.data-table td {
+    padding: 15px;
+    text-align: center;
+    gap: 15%;
+    word-break: break-word;
+    border-radius: 8px;
+}
+
+.data-table th {
+    background: rgba(212, 212, 212, 0.76);
+    color: rgb(2, 2, 2);
+    font-weight: bold;
+}
+
+.data-table tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: scale(1.02);
+    transition: all 0.3s;
+}
+
+/* جعل الجدول متجاوب */
+@media (max-width: 1200px) {
+    .listview {
+        overflow-x: auto;
+    }
+}
