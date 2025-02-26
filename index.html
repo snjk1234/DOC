@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>نظام إدارة العقارات</title>
-    <!-- إضافة الشعار في الرأس --><!-- إضافة الشعار في الرأس --><!-- إضافة الشعار في الرأس -->
-    <img src="D:\emad\DOC\logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
-</head>
+    <head>
+        <meta charset="UTF-8">
+        <title>نظام إدارة العقارات</title>
+        <link rel="stylesheet" href="satarday.css">
+        <!-- شعار الشركة -->
+        <link rel="icon" href="assets/logo.png" type="image/png">
+    </head>
+    
+    <!-- في قسم الجسم -->
+    <img src="assets/logo.png" class="header-logo" alt="Bakr Sabr Logo">
+
 <link rel="stylesheet" href="satarday.css">
 <body>
     <!-- واجهة تسجيل الدخول -->
@@ -35,22 +40,22 @@
             <div class="form-container" id="formContainer" style="display: none;">
                 <h3 id="buildingTitle"></h3>
                 <div class="input-group">
-                    <input type="number" id="totalBill" placeholder="المبلغ الكلي للفاتورة">
+                    <input type="number" id="totalBill" placeholder="المبلغ الكلي للفاتورة" step="any">
                 </div>
                 <div class="input-group">
-                    <input type="number" id="reading" placeholder="القراءة">
+                    <input type="number" id="reading" placeholder="القراءة" step="any">
                 </div>
                 <div class="input-group">
-                    <input type="number" id="valueSAR" placeholder="القيمة بالريال">
+                    <input type="number" id="valueSAR" placeholder="القيمة بالريال" step="any">
                 </div>
                 <div class="input-group">
-                    <input type="date" id="fromDate" placeholder="الفترة من">
+                    <input type="date" id="fromDate" placeholder="الفترة من" >
                 </div>
                 <div class="input-group">
                     <input type="date" id="toDate" placeholder="الفترة إلى">
                 </div>
                 <div class="input-group">
-                    <input type="number" id="paymentAmount" placeholder="مبلغ السداد">
+                    <input type="number" id="paymentAmount" placeholder="مبلغ السداد" step="any">
                 </div>
                 <div class="input-group">
                     <select id="comboBox"></select>

@@ -53,8 +53,10 @@ function populateComboBox(building) {
         combo.add(option);
     });
 }
-
+// تعديل دالة الحفظ لاستخدام التحقق
 function saveData() {
+    if (!validateForm()) return; // إيقاف الحفظ إذا فشل التحقق
+    
     const data = {
         building: currentBuilding,
         totalBill: document.getElementById('totalBill').value,
@@ -71,7 +73,10 @@ function saveData() {
     clearForm();
 }
 
+// تعديل دالة التحديث
 function updateData() {
+    if (!validateForm()) return; // إيقاف التعديل إذا فشل التحقق
+    
     if(editIndex > -1) {
         currentData[editIndex] = {
             building: currentBuilding,
@@ -86,6 +91,7 @@ function updateData() {
         updateListView();
         clearForm();
         editIndex = -1;
+        alert('✅ تم التعديل بنجاح');
     }
 }
 
@@ -136,4 +142,67 @@ function clearForm() {
 function goBack() {
     document.getElementById('formContainer').style.display = 'none';
     clearForm();
+}
+
+function validateForm() {
+    // جلب قيم جميع الحقول
+    const totalBill = document.getElementById('totalBill').value.trim();
+    const reading = document.getElementById('reading').value.trim();
+    const valueSAR = document.getElementById('valueSAR').value.trim();
+    const fromDate = document.getElementById('fromDate').value;
+    const toDate = document.getElementById('toDate').value;
+    const paymentAmount = document.getElementById('paymentAmount').value.trim();
+    const combo = document.getElementById('comboBox').value;
+
+    // قائمة الحقول المطلوبة
+    const requiredFields = [
+        { value: totalBill, name: 'المبلغ الكلي' },
+        { value: reading, name: 'القراءة' },
+        { value: valueSAR, name: 'القيمة بالريال' },
+        { value: fromDate, name: 'التاريخ من' },
+        { value: toDate, name: 'التاريخ إلى' },
+        { value: paymentAmount, name: 'مبلغ السداد' },
+        { value: combo, name: 'العداد التجاري' }
+    ];
+
+    // التحقق من الحقول الفارغة
+    const emptyFields = requiredFields.filter(field => !field.value);
+
+    if (emptyFields.length > 0) {
+        const errorMessage = 
+            '❗ الحقول التالية مطلوبة:\n' +
+            emptyFields.map(field => `- ${field.name}`).join('\n');
+        
+        alert(errorMessage);
+        return false;
+    }
+
+    // التحقق من أن الحقول الرقمية تحتوي على أرقام
+    const numericFields = [
+        { value: totalBill, name: 'المبلغ الكلي' },
+        { value: reading, name: 'القراءة' },
+        { value: valueSAR, name: 'القيمة بالريال' },
+        { value: paymentAmount, name: 'مبلغ السداد' }
+    ];
+
+    const invalidNumericFields = numericFields.filter(field => 
+        isNaN(parseFloat(field.value))
+    );
+
+    if (invalidNumericFields.length > 0) {
+        const errorMessage = 
+            '❌ الحقول التالية يجب أن تحتوي على أرقام:\n' +
+            invalidNumericFields.map(field => `- ${field.name}`).join('\n');
+        
+        alert(errorMessage);
+        return false;
+    }
+
+    // التحقق من صحة التواريخ
+    if (new Date(fromDate) > new Date(toDate)) {
+        alert('⚠️ تاريخ البداية لا يمكن أن يكون بعد تاريخ النهاية');
+        return false;
+    }
+
+    return true;
 }
