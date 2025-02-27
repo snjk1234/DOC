@@ -1,6 +1,7 @@
 let currentBuilding = '';
 let currentData = [];
 let editIndex = -1;
+let isEditMode = false; // متغير لتتبع حالة التعديل
 
 const comboBoxData = {
     'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
@@ -56,7 +57,7 @@ function populateComboBox(building) {
 // تعديل دالة الحفظ لاستخدام التحقق
 function saveData() {
     if (!validateForm()) return; // إيقاف الحفظ إذا فشل التحقق
-    
+
     const data = {
         building: currentBuilding,
         totalBill: document.getElementById('totalBill').value,
@@ -71,12 +72,26 @@ function saveData() {
     currentData.push(data);
     updateListView();
     clearForm();
+    document.getElementById('saveBtn').disabled = true;
 }
 
 // تعديل دالة التحديث
 function updateData() {
-    if (!validateForm()) return; // إيقاف التعديل إذا فشل التحقق
-    
+    if (isEditMode) {
+        if (!validateForm()) return; // إيقاف التعديل إذا فشل التحقق
+        // حفظ التعديلات
+        currentData[editIndex] = { /* ... البيانات الجديدة ... */ };
+        updateListView();
+        clearForm();
+        isEditMode = false;
+        document.getElementById('saveBtn').disabled = true;
+        document.getElementById('updateBtn').textContent = 'تعديل';
+    } else {
+        // تفعيل وضع التعديل
+        isEditMode = true;
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('updateBtn').textContent = 'حفظ التعديل';
+    }
     if(editIndex > -1) {
         currentData[editIndex] = {
             building: currentBuilding,
@@ -112,15 +127,22 @@ function updateListView() {
             <td>${data.paymentAmount}</td>
             <td>${data.combo}</td>
         `;
-        row.onclick = () => editEntry(index);
+        row.onclick = () => {
+            editEntry(index); // تعبئة الحقول بالبيانات المحددة
+            document.getElementById('saveBtn').disabled = true; // تعطيل الحفظ
+            document.getElementById('updateBtn').disabled = false; // تمكين التعديل
+        };
         listContent.appendChild(row);
     });
 }
 
+// دالة تعبئة الحقول ببيانات العنصر المحدد
 function editEntry(index) {
     editIndex = index;
     const data = currentData[index];
-    showForm(data.building);
+    showForm(data.building); // إظهار النموذج
+    
+    // تعبئة الحقول بالبيانات:
     document.getElementById('totalBill').value = data.totalBill;
     document.getElementById('reading').value = data.reading;
     document.getElementById('valueSAR').value = data.valueSAR;
@@ -128,6 +150,8 @@ function editEntry(index) {
     document.getElementById('toDate').value = data.toDate;
     document.getElementById('paymentAmount').value = data.paymentAmount;
     document.getElementById('comboBox').value = data.combo;
+    
+    isEditMode = false; // إعادة تعيين حالة التعديل
 }
 
 function clearForm() {

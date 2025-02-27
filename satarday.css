@@ -133,6 +133,14 @@ button {
     z-index: 1000;
 }
 
+.logout-btn:hover{
+    background: #ff0101e3 !important;
+}
+
+.logout-btn:active{
+    background: #ff01012f !important ;
+}
+
 button:hover {
     background: #3898ff;
     transform: translateX(5px);
@@ -140,6 +148,16 @@ button:hover {
 button:active{
     background: #0050a5;
 }
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+#updateBtn {
+    background: #ffc107 !important; /* لون مميز للتعديل */
+}
+
 .form-container {
     background: rgba(0, 0, 0, 0.062);
     padding: 25px;
