@@ -8,5 +8,7 @@
 			"path": "../DOC-1"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "DOC"
+	}
 }
