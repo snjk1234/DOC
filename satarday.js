@@ -58,9 +58,14 @@ function login() {
     }
 }
 
-// تعديل دالة الحفظ لاستخدام التحقق
-function saveData() {
-    if (!validateForm()) return; // إيقاف الحفظ إذا فشل التحقق
+/*****************************
+ * دالة موحدة للحفظ والتعديل *
+*****************************/
+function handleData() {
+    // التحقق من صحة البيانات قبل التنفيذ
+    if (!validateForm()) return;
+
+    // تجميع البيانات من النموذج
     const data = {
         building: currentBuilding,
         totalBill: document.getElementById('totalBill').value,
@@ -71,41 +76,26 @@ function saveData() {
         paymentAmount: document.getElementById('paymentAmount').value,
         combo: document.getElementById('comboBox').value
     };
-    currentData.push(data);
-    updateListView();
-    clearForm();
-    localStorage.setItem('estateData', btoa(JSON.stringify(currentData)));
-    document.getElementById('saveBtn').disabled = true;
-}
 
-function updateData() {
-    if (!validateForm()) return;
-    
-    const updatedData = {
-        building: currentBuilding,
-        totalBill: document.getElementById('totalBill').value,
-        reading: document.getElementById('reading').value,
-        valueSAR: document.getElementById('valueSAR').value,
-        fromDate: document.getElementById('fromDate').value,
-        toDate: document.getElementById('toDate').value,
-        paymentAmount: document.getElementById('paymentAmount').value,
-        combo: document.getElementById('comboBox').value
-    };
-
+    // التعديل إذا كان في وضع التعديل، وإلا الإضافة
     if (isEditMode && editIndex > -1) {
-        // حالة التعديل: استبدال البيانات القديمة
-        currentData[editIndex] = updatedData;
+        currentData[editIndex] = data;
         alert('✅ تم التعديل بنجاح');
     } else {
-        // حالة الإضافة: إدخال سجل جديد
-        currentData.push(updatedData);
+        currentData.push(data);
         alert('✅ تمت الإضافة بنجاح');
     }
-    // 3. حفظ البيانات في localStorage في جميع الحالات
+
+    // حفظ البيانات في localStorage بعد التشفير
+    const encryptedData = CryptoJS.AES.encrypt(
+        JSON.stringify(currentData), 
+        'SECRET_KEY'
+    ).toString();
+    localStorage.setItem('estateData', encryptedData);
+
+    // تحديث الجدول ومسح النموذج
     updateListView();
     clearForm();
-    localStorage.setItem('estateData', btoa(JSON.stringify(currentData)));
-    // 4. إعادة تعيين حالة التعديل
     isEditMode = false;
     editIndex = -1;
 }
@@ -153,8 +143,6 @@ function updateListView() {
         `;
         row.onclick = () => {
             editEntry(index); // تعبئة الحقول بالبيانات المحددة
-            document.getElementById('saveBtn').disabled = true; // تعطيل الحفظ
-            document.getElementById('updateBtn').disabled = false; // تمكين التعديل
         };
         listContent.appendChild(row);
     });
