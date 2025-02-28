@@ -21,7 +21,7 @@ body::after {
     z-index: 0; /* طبقة خلفية */
     transition: opacity 0.3s ease;
     opacity: 0.25 !important;       /* زيادة العتامة */
-    background-size: cover !important; /* بدلاً من 25% */
+    background-size: 25% !important; /* تكبير الحجم */
     filter: contrast(1.2);          /* زيادة التباين */
 }
 
