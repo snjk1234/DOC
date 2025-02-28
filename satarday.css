@@ -21,7 +21,7 @@ body::after {
     z-index: 0; /* طبقة خلفية */
     transition: opacity 0.3s ease;
     opacity: 0.25 !important;       /* زيادة العتامة */
-    background-size: 25% !important; /* تكبير الحجم */
+    background-size: cover !important; /* بدلاً من 25% */
     filter: contrast(1.2);          /* زيادة التباين */
 }
 
@@ -131,14 +131,6 @@ button {
     background: #ff010188 !important;
     font-size: 18px;
     z-index: 1000;
-}
-
-.logout-btn:hover{
-    background: #ff0101e3 !important;
-}
-
-.logout-btn:active{
-    background: #ff01012f !important ;
 }
 
 button:hover {
@@ -304,8 +296,14 @@ select#comboBox option:checked {
 }
 
 /* جعل الجدول متجاوب */
-@media (max-width: 1200px) {
-    .listview {
-        overflow-x: auto;
+@media (max-width: 768px) {
+    .group-all {
+        flex-direction: column;
+    }
+    .form-container, .listview {
+        width: 100% !important;
     }
 }
+#saveBtn { background: #28a745; }
+#updateBtn { background: #ffc107; color: #000; }
+.delete-btn { background: #dc3545; }

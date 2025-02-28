@@ -1,17 +1,13 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-    <head>
-        <meta charset="UTF-8">
-        <title>نظام إدارة العقارات</title>
-        <link rel="stylesheet" href="satarday.css">
-        <!-- شعار الشركة -->
-        <link rel="icon" href="logo.png" type="image/png">
-    </head>
-    
-    <!-- في قسم الجسم -->
-    <img src="logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
-
-<link rel="stylesheet" href="satarday.css">
+<head>
+    <meta charset="UTF-8">
+    <title>نظام إدارة العقارات</title>
+    <link rel="stylesheet" href="satarday.css">
+    <link rel="icon" href="logo.png" type="image/png">
+    <!-- إضافة مكتبة التشفير -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
 <body>
     <!-- واجهة تسجيل الدخول -->
     <div class="login-container" id="loginContainer">
@@ -24,70 +20,72 @@
         </div>
         <button class="btt" onclick="login()">دخول</button>
     </div>
+    
+        <!-- لوحة التحكم -->
+        <div class="dashboard" id="dashboard">
+            <img src="logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
+            <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
+            <div class="building-buttons">
+                <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
+                <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
+                <button onclick="showForm('عمارة المنارات 30059069267')">عمارة المنارات 30059069267</button>
+                <button onclick="showForm('عمارة السيل 30059012783')">عمارة السيل 30059012783</button>
+                <button onclick="showForm('عمارة المكتب القديم 10074768485')">عمارة المكتب القديم 10074768485</button>
+                <button onclick="showForm('عمارة التجارية 30059069178')">عمارة التجارية 30059069178</button>
 
-    <!-- لوحة التحكم -->
-    <div class="dashboard" id="dashboard">
-        <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
-        <div class="building-buttons">
-            <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
-            <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
-            <button onclick="showForm('عمارة المنارات 30059069267')">عمارة المنارات 30059069267</button>
-            <button onclick="showForm('عمارة السيل 30059012783')">عمارة السيل 30059012783</button>
-            <button onclick="showForm('عمارة المكتب القديم 10074768485')">عمارة المكتب القديم 10074768485</button>
-            <button onclick="showForm('عمارة التجارية 30059069178')">عمارة التجارية 30059069178</button>
-        </div>
-        <div class="group-all">
-            <!-- نموذج الإدخال -->
-            <div class="form-container" id="formContainer" style="display: none;">
-                <h3 id="buildingTitle"></h3>
-                <div class="input-group">
-                    <input type="number" id="totalBill" placeholder="المبلغ الكلي للفاتورة" step="any">
+            </div>
+            <div class="group-all">
+                <!-- نموذج الإدخال -->
+                <div class="form-container" id="formContainer" style="display: none;">
+                    <h3 id="buildingTitle"></h3>
+                    <div class="input-group">
+                        <input type="number" id="totalBill" placeholder="المبلغ الكلي للفاتورة" step="any">
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="reading" placeholder="القراءة" step="any">
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="valueSAR" placeholder="القيمة بالريال" step="any">
+                    </div>
+                    <div class="input-group">
+                        <input type="date" id="fromDate" placeholder="الفترة من" >
+                    </div>
+                    <div class="input-group">
+                        <input type="date" id="toDate" placeholder="الفترة إلى">
+                    </div>
+                    <div class="input-group">
+                        <input type="number" id="paymentAmount" placeholder="مبلغ السداد" step="any">
+                    </div>
+                    <div class="input-group">
+                        <select id="comboBox"></select>
+                    </div>
+                    <div class="form-actions">
+                        <button onclick="saveData()">حفظ</button>
+                        <button onclick="updateData()">تعديل</button>
+                        <button onclick="goBack()">رجوع</button>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <input type="number" id="reading" placeholder="القراءة" step="any">
-                </div>
-                <div class="input-group">
-                    <input type="number" id="valueSAR" placeholder="القيمة بالريال" step="any">
-                </div>
-                <div class="input-group">
-                    <input type="date" id="fromDate" placeholder="الفترة من" >
-                </div>
-                <div class="input-group">
-                    <input type="date" id="toDate" placeholder="الفترة إلى">
-                </div>
-                <div class="input-group">
-                    <input type="number" id="paymentAmount" placeholder="مبلغ السداد" step="any">
-                </div>
-                <div class="input-group">
-                    <select id="comboBox"></select>
-                </div>
-                <div class="form-actions">
-                    <button onclick="saveData()">حفظ</button>
-                    <button onclick="updateData()">تعديل</button>
-                    <button onclick="goBack()">رجوع</button>
+    
+                <div class="listview" id="listView">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>اسم العمارة</th>
+                                <th>المبلغ الكلي</th>
+                                <th>القراءة</th>
+                                <th>القيمة بالريال</th>
+                                <th>التاريخ من</th>
+                                <th>التاريخ إلى</th>
+                                <th>مبلغ السداد</th>
+                                <th>العداد التجاري</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listContent"></tbody>
+                    </table>
                 </div>
             </div>
-
-            <div class="listview" id="listView">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>اسم العمارة</th>
-                            <th>المبلغ الكلي</th>
-                            <th>القراءة</th>
-                            <th>القيمة بالريال</th>
-                            <th>التاريخ من</th>
-                            <th>التاريخ إلى</th>
-                            <th>مبلغ السداد</th>
-                            <th>العداد التجاري</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listContent"></tbody>
-                </table>
-            </div>
         </div>
-    </div>
-
-    <script src="satarday.js"></script>
-</body>
+    
+        <script src="satarday.js"></script>
+    </body>
 </html>

@@ -1,8 +1,12 @@
-let currentBuilding = '';
-let currentData = [];
-let editIndex = -1;
-let isEditMode = false; // متغير لتتبع حالة التعديل
+/*****************************
+ *         المتغيرات         *
+ *****************************/
+let currentBuilding = ''; // العمارة المحددة
+let currentData = [];     // بيانات التطبيق
+let editIndex = -1;       // مؤشر التعديل
+let isEditMode = false;   // حالة التعديل
 
+// بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
     'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
     'عمارة سلطانة 10075126558': ['شقة رقم 10 عدد 1','خدمات +عمال ريان بدون'],
@@ -12,30 +16,104 @@ const comboBoxData = {
     'عمارة التجارية 30059069178': []
 };
 
-document.addEventListener('DOMContentLoaded', function() {
-    if(localStorage.getItem('isLoggedIn') === 'true') {
+/*****************************
+ *       أحداث التحميل       *
+ *****************************/
+document.addEventListener('DOMContentLoaded', () => {
+    // تحميل البيانات من localStorage
+    const encryptedData = localStorage.getItem('estateData');
+    if (encryptedData) {
+        currentData = JSON.parse(CryptoJS.AES.decrypt(encryptedData, 'SECRET_KEY').toString(CryptoJS.enc.Utf8));
+    }
+
+    // التحقق من تسجيل الدخول
+    if (localStorage.getItem('authToken')) {
         document.getElementById('loginContainer').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
+        updateListView();
     }
 });
 
+/*****************************
+ *      إدارة المصادقة      *
+ *****************************/
 function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-    
-    if(username === 'admin' && password === 'admin') {
-        // حفظ حالة تسجيل الدخول
-        localStorage.setItem('isLoggedIn', 'true');
-        
+
+    // تشفير كلمة المرور باستخدام SHA-256
+    const hashedPassword = CryptoJS.SHA256(password).toString();
+
+    // بيانات المستخدمين (يجب تغييرها في البيئة الإنتاجية)
+    const validUsers = {
+        admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // تشفير SHA-256 لـ "123"
+    };
+
+    if (validUsers[username] === hashedPassword) {
+        localStorage.setItem('authToken', 'generated_token_here');
         document.getElementById('loginContainer').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
+    } else {
+        alert('بيانات الدخول غير صحيحة!');
     }
+}
+
+// تعديل دالة الحفظ لاستخدام التحقق
+function saveData() {
+    if (!validateForm()) return; // إيقاف الحفظ إذا فشل التحقق
+    const data = {
+        building: currentBuilding,
+        totalBill: document.getElementById('totalBill').value,
+        reading: document.getElementById('reading').value,
+        valueSAR: document.getElementById('valueSAR').value,
+        fromDate: document.getElementById('fromDate').value,
+        toDate: document.getElementById('toDate').value,
+        paymentAmount: document.getElementById('paymentAmount').value,
+        combo: document.getElementById('comboBox').value
+    };
+    currentData.push(data);
+    updateListView();
+    clearForm();
+    localStorage.setItem('estateData', btoa(JSON.stringify(currentData)));
+    document.getElementById('saveBtn').disabled = true;
+}
+
+function updateData() {
+    if (!validateForm()) return;
+    
+    const updatedData = {
+        building: currentBuilding,
+        totalBill: document.getElementById('totalBill').value,
+        reading: document.getElementById('reading').value,
+        valueSAR: document.getElementById('valueSAR').value,
+        fromDate: document.getElementById('fromDate').value,
+        toDate: document.getElementById('toDate').value,
+        paymentAmount: document.getElementById('paymentAmount').value,
+        combo: document.getElementById('comboBox').value
+    };
+
+    if (isEditMode && editIndex > -1) {
+        // حالة التعديل: استبدال البيانات القديمة
+        currentData[editIndex] = updatedData;
+        alert('✅ تم التعديل بنجاح');
+    } else {
+        // حالة الإضافة: إدخال سجل جديد
+        currentData.push(updatedData);
+        alert('✅ تمت الإضافة بنجاح');
+    }
+    // 3. حفظ البيانات في localStorage في جميع الحالات
+    updateListView();
+    clearForm();
+    localStorage.setItem('estateData', btoa(JSON.stringify(currentData)));
+    // 4. إعادة تعيين حالة التعديل
+    isEditMode = false;
+    editIndex = -1;
 }
 
 // إضافة دالة تسجيل الخروج (اختياري)
 function logout() {
-    localStorage.removeItem('isLoggedIn');
-    location.reload();
+    localStorage.clear(); // مسح جميع البيانات المؤقتة
+    location.href = 'index.html'; // إعادة التوجيه
 }
 
 function showForm(building) {
@@ -54,61 +132,7 @@ function populateComboBox(building) {
         combo.add(option);
     });
 }
-// تعديل دالة الحفظ لاستخدام التحقق
-function saveData() {
-    if (!validateForm()) return; // إيقاف الحفظ إذا فشل التحقق
 
-    const data = {
-        building: currentBuilding,
-        totalBill: document.getElementById('totalBill').value,
-        reading: document.getElementById('reading').value,
-        valueSAR: document.getElementById('valueSAR').value,
-        fromDate: document.getElementById('fromDate').value,
-        toDate: document.getElementById('toDate').value,
-        paymentAmount: document.getElementById('paymentAmount').value,
-        combo: document.getElementById('comboBox').value
-    };
-    
-    currentData.push(data);
-    updateListView();
-    clearForm();
-    document.getElementById('saveBtn').disabled = true;
-}
-
-// تعديل دالة التحديث
-function updateData() {
-    if (isEditMode) {
-        if (!validateForm()) return; // إيقاف التعديل إذا فشل التحقق
-        // حفظ التعديلات
-        currentData[editIndex] = { /* ... البيانات الجديدة ... */ };
-        updateListView();
-        clearForm();
-        isEditMode = false;
-        document.getElementById('saveBtn').disabled = true;
-        document.getElementById('updateBtn').textContent = 'تعديل';
-    } else {
-        // تفعيل وضع التعديل
-        isEditMode = true;
-        document.getElementById('saveBtn').disabled = false;
-        document.getElementById('updateBtn').textContent = 'حفظ التعديل';
-    }
-    if(editIndex > -1) {
-        currentData[editIndex] = {
-            building: currentBuilding,
-            totalBill: document.getElementById('totalBill').value,
-            reading: document.getElementById('reading').value,
-            valueSAR: document.getElementById('valueSAR').value,
-            fromDate: document.getElementById('fromDate').value,
-            toDate: document.getElementById('toDate').value,
-            paymentAmount: document.getElementById('paymentAmount').value,
-            combo: document.getElementById('comboBox').value
-        };
-        updateListView();
-        clearForm();
-        editIndex = -1;
-        alert('✅ تم التعديل بنجاح');
-    }
-}
 
 function updateListView() {
     const listContent = document.getElementById('listContent');
@@ -136,13 +160,11 @@ function updateListView() {
     });
 }
 
-// دالة تعبئة الحقول ببيانات العنصر المحدد
 function editEntry(index) {
+    isEditMode = true;
     editIndex = index;
     const data = currentData[index];
-    showForm(data.building); // إظهار النموذج
-    
-    // تعبئة الحقول بالبيانات:
+    showForm(data.building);
     document.getElementById('totalBill').value = data.totalBill;
     document.getElementById('reading').value = data.reading;
     document.getElementById('valueSAR').value = data.valueSAR;
@@ -150,8 +172,6 @@ function editEntry(index) {
     document.getElementById('toDate').value = data.toDate;
     document.getElementById('paymentAmount').value = data.paymentAmount;
     document.getElementById('comboBox').value = data.combo;
-    
-    isEditMode = false; // إعادة تعيين حالة التعديل
 }
 
 function clearForm() {
@@ -164,6 +184,8 @@ function clearForm() {
 }
 
 function goBack() {
+    isEditMode = false; // إلغاء وضع التعديل
+    editIndex = -1; // إعادة تعيين الفهرس
     document.getElementById('formContainer').style.display = 'none';
     clearForm();
 }
@@ -230,3 +252,6 @@ function validateForm() {
 
     return true;
 }
+window.onbeforeunload = function() {
+    if (currentData.length > 0) return 'لديك تغييرات غير محفوظة!';
+};
