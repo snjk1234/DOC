@@ -306,4 +306,21 @@ select#comboBox option:checked {
 }
 #saveBtn { background: #28a745; }
 #updateBtn { background: #ffc107; color: #000; }
-.delete-btn { background: #dc3545; }
+.delete-btn { background: #dc3545; 
+}
+
+#searchInput {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    grid-column: 1 / -1; /* يشغل كامل عرض الشبكة */
+}
+
+#searchInput:focus {
+    outline: none;
+    border-color: #017cff;
+    box-shadow: 0 0 0 2px rgba(1, 124, 255, 0.2);
+}

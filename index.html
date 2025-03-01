@@ -26,13 +26,15 @@
             <img src="logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
             <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
             <div class="building-buttons">
-                <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
-                <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
-                <button onclick="showForm('عمارة المنارات 30059069267')">عمارة المنارات 30059069267</button>
-                <button onclick="showForm('عمارة السيل 30059012783')">عمارة السيل 30059012783</button>
-                <button onclick="showForm('عمارة المكتب القديم 10074768485')">عمارة المكتب القديم 10074768485</button>
-                <button onclick="showForm('عمارة التجارية 30059069178')">عمارة التجارية 30059069178</button>
-
+                <div class="building-buttons">
+                    <input type="search" id="searchInput" placeholder="بحث في جميع الحقول" oninput="searchData(this.value)">
+                    <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
+                    <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
+                    <button onclick="showForm('عمارة المنارات 30059069267')">عمارة المنارات 30059069267</button>
+                    <button onclick="showForm('عمارة السيل 30059012783')">عمارة السيل 30059012783</button>
+                    <button onclick="showForm('عمارة المكتب القديم 10074768485')">عمارة المكتب القديم 10074768485</button>
+                    <button onclick="showForm('عمارة التجارية 30059069178')">عمارة التجارية 30059069178</button>
+                </div>
             </div>
             <div class="group-all">
                 <!-- نموذج الإدخال -->

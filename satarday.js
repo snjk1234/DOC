@@ -1,10 +1,62 @@
 /*****************************
- *         المتغيرات         *
+ *         المتغيرات العامة         *
  *****************************/
-let currentBuilding = ''; // العمارة المحددة
-let currentData = [];     // بيانات التطبيق
-let editIndex = -1;       // مؤشر التعديل
-let isEditMode = false;   // حالة التعديل
+let currentBuilding = ''; // تخزين اسم العمارة المحددة
+let currentData = [];     // مصفوفة تخزن بيانات العقارات
+let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
+let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
+let db;                   // المرجع الرئيسي لقاعدة البيانات
+
+/*****************************
+ *      ثوابت قاعدة البيانات      *
+ *****************************/
+const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
+const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
+const DB_VERSION = 1;             // إصدار قاعدة البيانات
+
+/*****************************
+ *    تهيئة قاعدة البيانات     *
+ *****************************/
+function initializeDatabase() {
+    return new Promise((resolve, reject) => {
+        // فتح أو إنشاء قاعدة البيانات
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        // معالجة تحديث الهيكل
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // إنشاء مخزن البيانات إذا لم يكن موجوداً
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const store = db.createObjectStore(STORE_NAME, {
+                    keyPath: 'id',
+                    autoIncrement: true
+                });
+                
+                // إنشاء فهارس لجميع الحقول للبحث السريع
+                store.createIndex('building', 'building', { unique: false });
+                store.createIndex('totalBill', 'totalBill', { unique: false });
+                store.createIndex('reading', 'reading', { unique: false });
+                store.createIndex('valueSAR', 'valueSAR', { unique: false });
+                store.createIndex('fromDate', 'fromDate', { unique: false });
+                store.createIndex('toDate', 'toDate', { unique: false });
+                store.createIndex('paymentAmount', 'paymentAmount', { unique: false });
+                store.createIndex('combo', 'combo', { unique: false });
+            }
+        };
+
+        // عند نجاح فتح قاعدة البيانات
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db); // إرجاع المرجع لقاعدة البيانات
+        };
+
+        // معالجة الأخطاء
+        request.onerror = (event) => {
+            reject(event.target.error);
+        };
+    });
+}
 
 // بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
@@ -17,22 +69,48 @@ const comboBoxData = {
 };
 
 /*****************************
- *       أحداث التحميل       *
+ *     أحداث تحميل الصفحة     *
  *****************************/
-document.addEventListener('DOMContentLoaded', () => {
-    // تحميل البيانات من localStorage
-    const encryptedData = localStorage.getItem('estateData');
-    if (encryptedData) {
-        currentData = JSON.parse(CryptoJS.AES.decrypt(encryptedData, 'SECRET_KEY').toString(CryptoJS.enc.Utf8));
-    }
-
-    // التحقق من تسجيل الدخول
-    if (localStorage.getItem('authToken')) {
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
-        updateListView();
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        // تهيئة قاعدة البيانات
+        db = await initializeDatabase();
+        
+        // التحقق من وجود توكن مصادقة
+        if (localStorage.getItem('authToken')) {
+            // إخفاء واجهة الدخول وإظهار لوحة التحكم
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            
+            // تحميل البيانات وعرضها
+            loadAllData();
+        }
+    } catch (error) {
+        console.error('فشل تهيئة التطبيق:', error);
+        alert('حدث خطأ في تهيئة قاعدة البيانات!');
     }
 });
+
+/*****************************
+ *      تحميل جميع البيانات      *
+ *****************************/
+function loadAllData() {
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    
+    // جلب جميع السجلات
+    const request = store.getAll();
+    
+    request.onsuccess = () => {
+        currentData = request.result;
+        updateListView(); // تحديث الواجهة
+    };
+    
+    // معالجة أخطاء المعاملة
+    transaction.onerror = (event) => {
+        console.error('فشل تحميل البيانات:', event.target.error);
+    };
+}
 
 /*****************************
  *      إدارة المصادقة      *
@@ -40,32 +118,31 @@ document.addEventListener('DOMContentLoaded', () => {
 function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
-
+    
     // تشفير كلمة المرور باستخدام SHA-256
     const hashedPassword = CryptoJS.SHA256(password).toString();
 
-    // بيانات المستخدمين (يجب تغييرها في البيئة الإنتاجية)
+    // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
     const validUsers = {
-        admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // تشفير SHA-256 لـ "123"
+        admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
     };
 
+    // التحقق من صحة البيانات
     if (validUsers[username] === hashedPassword) {
         localStorage.setItem('authToken', 'generated_token_here');
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('dashboard').style.display = 'block';
+        location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
     } else {
         alert('بيانات الدخول غير صحيحة!');
     }
 }
 
 /*****************************
- * دالة موحدة للحفظ والتعديل *
-*****************************/
+ *   إدارة العمليات (إضافة/تعديل)   *
+ *****************************/
 function handleData() {
-    // التحقق من صحة البيانات قبل التنفيذ
-    if (!validateForm()) return;
+    if (!validateForm()) return; // التحقق من صحة النموذج
 
-    // تجميع البيانات من النموذج
+    // تجميع بيانات النموذج
     const data = {
         building: currentBuilding,
         totalBill: document.getElementById('totalBill').value,
@@ -77,27 +154,45 @@ function handleData() {
         combo: document.getElementById('comboBox').value
     };
 
-    // التعديل إذا كان في وضع التعديل، وإلا الإضافة
-    if (isEditMode && editIndex > -1) {
-        currentData[editIndex] = data;
-        alert('✅ تم التعديل بنجاح');
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+
+    // تحديد نوع العملية (تعديل/إضافة)
+    if (isEditMode) {
+        data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
+        const request = store.put(data);
+        
+        request.onsuccess = async () => {
+            alert('✅ تم التعديل بنجاح');
+            await loadAllData(); // تأكد من تحديث البيانات
+        };
     } else {
-        currentData.push(data);
-        alert('✅ تمت الإضافة بنجاح');
+        const request = store.add(data);
+        
+        request.onsuccess = async () => {
+            alert('✅ تم الاضافة بنجاح');
+            await loadAllData(); // تأكد من تحديث البيانات
+        };
     }
 
-    // حفظ البيانات في localStorage بعد التشفير
-    const encryptedData = CryptoJS.AES.encrypt(
-        JSON.stringify(currentData), 
-        'SECRET_KEY'
-    ).toString();
-    localStorage.setItem('estateData', encryptedData);
+    // معالجة الأخطاء
+    transaction.onerror = (event) => {
+        console.error('فشلت العملية:', event.target.error);
+        alert('حدث خطأ أثناء الحفظ!');
+    };
 
-    // تحديث الجدول ومسح النموذج
-    updateListView();
-    clearForm();
+    clearForm(); // مسح النموذج
     isEditMode = false;
     editIndex = -1;
+}
+
+function deleteEntry(id) {
+    const transaction = db.transaction([STORE_NAME], 'readwrite');
+    const store = transaction.objectStore(STORE_NAME);
+    store.delete(id).onsuccess = () => {
+        loadAllData();
+        alert('✅ تم الحذف بنجاح');
+    };
 }
 
 // إضافة دالة تسجيل الخروج (اختياري)
@@ -116,42 +211,47 @@ function showForm(building) {
 function populateComboBox(building) {
     const combo = document.getElementById('comboBox');
     combo.innerHTML = '';
-    comboBoxData[building].forEach(item => {
-        const option = document.createElement('option');
-        option.text = item;
-        combo.add(option);
-    });
+    if (comboBoxData[building]) {
+        comboBoxData[building].forEach(item => {
+            const option = document.createElement('option');
+            option.text = item;
+            combo.add(option);
+        });
+    }
 }
 
+/*****************************
+ *      البحث في البيانات      *
+ *****************************/
+function searchData(searchTerm) {
+    const index = store.index('building'); // مثال باستخدام فهرس العمارة
+    const request = index.getAll(searchTerm);
 
-function updateListView() {
-    const listContent = document.getElementById('listContent');
-    listContent.innerHTML = '';
-    
-    currentData.forEach((data, index) => {
-        const row = document.createElement('tr');
-        row.className = 'list-item';
-        row.innerHTML = `
-            <td>${data.building}</td>
-            <td>${data.totalBill}</td>
-            <td>${data.reading}</td>
-            <td>${data.valueSAR}</td>
-            <td>${data.fromDate}</td>
-            <td>${data.toDate}</td>
-            <td>${data.paymentAmount}</td>
-            <td>${data.combo}</td>
-        `;
-        row.onclick = () => {
-            editEntry(index); // تعبئة الحقول بالبيانات المحددة
-        };
-        listContent.appendChild(row);
-    });
+    // فتح مؤشر للبحث في جميع السجلات
+    store.openCursor().onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+            const item = cursor.value;
+            
+            // البحث في جميع حقول السجل
+            const match = Object.values(item).some(value =>
+                String(value).toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            
+            if (match) results.push(item);
+            cursor.continue();
+        } else {
+            currentData = results;
+            updateListView(); // تحديث القائمة
+        }
+    };
 }
 
 function editEntry(index) {
     isEditMode = true;
     editIndex = index;
     const data = currentData[index];
+    
     showForm(data.building);
     document.getElementById('totalBill').value = data.totalBill;
     document.getElementById('reading').value = data.reading;
@@ -171,12 +271,6 @@ function clearForm() {
     document.getElementById('paymentAmount').value = '';
 }
 
-function goBack() {
-    isEditMode = false; // إلغاء وضع التعديل
-    editIndex = -1; // إعادة تعيين الفهرس
-    document.getElementById('formContainer').style.display = 'none';
-    clearForm();
-}
 
 function validateForm() {
     // جلب قيم جميع الحقول
@@ -243,3 +337,28 @@ function validateForm() {
 window.onbeforeunload = function() {
     if (currentData.length > 0) return 'لديك تغييرات غير محفوظة!';
 };
+
+/*****************************
+ *      وظائف مساعدة      *
+ *****************************/
+function updateListView() {
+    const listContent = document.getElementById('listContent');
+    listContent.innerHTML = '';
+    
+    currentData.forEach((data, index) => {
+        const row = document.createElement('tr');
+        row.className = 'list-item';
+        row.innerHTML = `
+            <td>${data.building}</td>
+            <td>${data.totalBill}</td>
+            <td>${data.reading}</td>
+            <td>${data.valueSAR}</td>
+            <td>${data.fromDate}</td>
+            <td>${data.toDate}</td>
+            <td>${data.paymentAmount}</td>
+            <td>${data.combo}</td>
+        `;
+        row.onclick = () => editEntry(index);
+        listContent.appendChild(row);
+    });
+}
