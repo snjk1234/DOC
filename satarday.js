@@ -6,6 +6,11 @@ let currentData = [];     // مصفوفة تخزن بيانات العقارات
 let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
 let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
 
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+import { getAuth } from "firebase/auth"; // لتسجيل الدخول
+import { getFirestore } from "firebase/firestore"; // لقاعدة البيانات
+
 const firebaseConfig = {
     apiKey: "AIzaSyD8Q29wId2UKCwOJ9QvE2tXCQsCs69G_Vw",
     authDomain: "doce-27e38.firebaseapp.com",
@@ -17,6 +22,9 @@ const firebaseConfig = {
   };
 
 firebase.initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+const auth = getAuth(app); // لتسجيل الدخول
+const db = getFirestore(app); // لقاعدة البيانات
 const database = firebase.database();
 // بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
