@@ -52,7 +52,7 @@
                         <input type="number" id="valueSAR" placeholder="القيمة بالريال" step="any">
                     </div>
                     <div class="input-group">
-                        <input type="date" id="fromDate" placeholder="الفترة من" >
+                        <input type="date" id="fromDate" onchange="updateToDateMin()" placeholder="الفترة من">
                     </div>
                     <div class="input-group">
                         <input type="date" id="toDate" placeholder="الفترة إلى">
@@ -66,6 +66,7 @@
                     <div class="form-actions">
                         <button onclick="handleData()">حفظ او تعديل</button> <!-- زر موحد -->
                         <button onclick="goBack()">رجوع</button>
+                        <button onclick="exportToExcel()" class="export-btn">تصدير إلى Excel</button>
                         <button onclick="deleteEntry(currentData[editIndex]?.id)" class="delete-btn">حذف</button>
 
                     </div>
@@ -90,7 +91,11 @@
                 </div>
             </div>
         </div>
-    
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
         <script src="satarday.js"></script>
         <div id="loadingOverlay">
             <div class="spinner"></div>

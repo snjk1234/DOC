@@ -394,3 +394,29 @@ select#comboBox option:checked {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+@media (max-width: 768px) {
+    .building-buttons {
+        grid-template-columns: 1fr !important;
+        width: 100% !important;
+    }
+
+    .searchData {
+        width: 100% !important;
+    }
+
+    .group-all {
+        flex-direction: column;
+    }
+
+    .form-container, .listview {
+        width: 100% !important;
+        margin: 10px 0;
+    }
+
+    .logout-btn {
+        top: 120px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+    }
+}
