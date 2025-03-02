@@ -5,26 +5,60 @@ let currentBuilding = ''; // تخزين اسم العمارة المحددة
 let currentData = [];     // مصفوفة تخزن بيانات العقارات
 let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
 let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
+let db;                   // المرجع الرئيسي لقاعدة البيانات
 
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getDatabase } from "firebase/database";
+/*****************************
+ *      ثوابت قاعدة البيانات      *
+ *****************************/
+const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
+const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
+const DB_VERSION = 1;             // إصدار قاعدة البيانات
 
+/*****************************
+ *    تهيئة قاعدة البيانات     *
+ *****************************/
+function initializeDatabase() {
+    return new Promise((resolve, reject) => {
+        // فتح أو إنشاء قاعدة البيانات
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-const firebaseConfig = {
-    apiKey: "AIzaSyD8Q29wId2UKCwOJ9QvE2tXCQsCs69G_Vw",
-    authDomain: "doce-27e38.firebaseapp.com",
-    projectId: "doce-27e38",
-    storageBucket: "doce-27e38.firebasestorage.app",
-    messagingSenderId: "636383310024",
-    appId: "1:636383310024:web:f3cbf688e5991ff9aa75fd",
-    measurementId: "G-6ECK0BDES2"
-};
+        // معالجة تحديث الهيكل
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // إنشاء مخزن البيانات إذا لم يكن موجوداً
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const store = db.createObjectStore(STORE_NAME, {
+                    keyPath: 'id',
+                    autoIncrement: true
+                });
+                
+                // إنشاء فهارس لجميع الحقول للبحث السريع
+                store.createIndex('building', 'building', { unique: false });
+                store.createIndex('totalBill', 'totalBill', { unique: false });
+                store.createIndex('reading', 'reading', { unique: false });
+                store.createIndex('valueSAR', 'valueSAR', { unique: false });
+                store.createIndex('fromDate', 'fromDate', { unique: false });
+                store.createIndex('toDate', 'toDate', { unique: false });
+                store.createIndex('paymentAmount', 'paymentAmount', { unique: false });
+                store.createIndex('combo', 'combo', { unique: false });
+            }
+        };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const database = getDatabase(app);
+        // عند نجاح فتح قاعدة البيانات
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db); // إرجاع المرجع لقاعدة البيانات
+        };
 
+        // معالجة الأخطاء
+        request.onerror = (event) => {
+            reject(event.target.error);
+        };
+    });
+}
+
+// بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
     'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
     'عمارة سلطانة 10075126558': ['شقة رقم 10 عدد 1','خدمات +عمال ريان بدون'],
@@ -39,16 +73,24 @@ const comboBoxData = {
  *****************************/
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // تهيئة قاعدة البيانات
+        
+        
+        // التحقق من وجود توكن مصادقة
         if (sessionStorage.getItem('authToken')) {
+            db = await initializeDatabase();
+            // إخفاء واجهة الدخول وإظهار لوحة التحكم
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
-            await loadDataFromFirebase();
+
+            // تحميل البيانات وعرضها
+            await loadAllData();
         }
     } catch (error) {
         console.error('فشل تهيئة التطبيق:', error);
         alert('تعذر الاتصال بالنظام!');
     } finally {
-        hideLoader();
+        hideLoader(); // إخفاء المؤشر في جميع الحالات
     }
 });
 
@@ -69,34 +111,51 @@ function hideLoader() {
 /*****************************
  *      تحميل جميع البيانات      *
  *****************************/
-async function loadDataFromFirebase() {
+async function loadAllData() {
     try {
-        showLoader();
-        const snapshot = await get(ref(database, 'buildings'));
-        const data = snapshot.val();
-        currentData = data ? Object.values(data) : [];
+        showLoader(); // هنا قبل بدء العملية
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+        
+        const data = await new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        
+        currentData = data;
         updateListView();
     } catch (error) {
-        console.error('فشل تحميل البيانات:', error);
         alert('فشل تحميل البيانات: ' + error.message);
     } finally {
-        hideLoader();
+        hideLoader(); // هنا بعد الانتهاء من جميع العمليات
     }
 }
 
-async function loadDataFromFirebase() {
-    try {
-        showLoader();
-        const snapshot = await database.ref('buildings').once('value');
-        const data = snapshot.val();
-        currentData = data ? Object.values(data) : [];
-        updateListView();
-    } catch (error) {
-        console.error('فشل تحميل البيانات:', error);
-        alert('فشل تحميل البيانات: ' + error.message);
-    } finally {
-        hideLoader();
-    }
+async function loadPaginatedData(page = 1, pageSize = 10) {
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    const results = [];
+    let counter = 0;
+
+    await new Promise((resolve) => {
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor && counter < (page * pageSize)) {
+                if (counter >= ((page - 1) * pageSize)) {
+                    results.push(cursor.value);
+                }
+                counter++;
+                cursor.continue();
+            } else {
+                resolve();
+            }
+        };
+    });
+
+    currentData = results;
+    updateListView();
 }
 
 /*****************************
@@ -104,33 +163,40 @@ async function loadDataFromFirebase() {
  *****************************/
 async function login() {
     try {
-        showLoader();
-        const email = document.getElementById('username').value;
+        showLoader(); // قبل التحقق من البيانات
+        const username = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        sessionStorage.setItem('authToken', user.uid);
-        location.reload();
+        
+        // تشفير كلمة المرور باستخدام SHA-256
+        const hashedPassword = CryptoJS.SHA256(password).toString();
+    
+        // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
+        const validUsers = {
+            admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
+        };
+    
+        // التحقق من صحة البيانات
+        if (validUsers[username] === hashedPassword) {
+            sessionStorage.setItem('authToken', 'generated_token_here');
+            location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
+        } else {
+            alert('بيانات الدخول غير صحيحة!');
+        }
+        if (validUsers[username] === hashedPassword) { // ✅ استخدام الشرط مباشرة
+            sessionStorage.setItem('authToken', 'generated_token_here');
+            location.reload();
+        }
     } catch (error) {
-        console.error('فشل التسجيل:', error);
-        alert('بيانات الدخول غير صحيحة!');
+        alert('فشل التسجيل: ' + error.message);
     } finally {
-        hideLoader();
+        hideLoader(); // بعد اكتمال العملية
     }
 }
 
+// إضافة دالة تسجيل الخروج (اختياري)
 function logout() {
-    signOut(auth).then(() => {
-        sessionStorage.clear();
-        location.href = 'index.html';
-    });
-}
-
-function saveDataToFirebase(data) {
-    const db = firebase.database();
-    db.ref('buildings').set(data);
+    sessionStorage.clear(); // مسح جميع البيانات المؤقتة
+    location.href = 'index.html'; // إعادة التوجيه
 }
 
 /*****************************
@@ -138,17 +204,24 @@ function saveDataToFirebase(data) {
  *****************************/
 async function deleteEntry(id) {
     if (!confirm('هل أنت متأكد؟')) return;
-
+    
     try {
-        showLoader();
-        await remove(ref(database, `buildings/${id}`));
-        await loadDataFromFirebase();
+        showLoader(); // هنا قبل الحذف
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        await new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+        
+        await loadAllData(); // إعادة تحميل البيانات
         clearForm();
     } catch (error) {
-        console.error('فشل الحذف:', error);
         alert('فشل الحذف: ' + error.message);
     } finally {
-        hideLoader();
+        hideLoader(); // هنا بعد الانتهاء
     }
 }
 
@@ -156,11 +229,14 @@ async function deleteEntry(id) {
  *   إدارة العمليات (إضافة/تعديل)   *
  *****************************/
 async function handleData() {
+    // التحقق من صحة النموذج أولاً
     if (!validateForm()) return;
 
     try {
+        // إظهار مؤشر التحميل
         showLoader();
 
+        // تجميع بيانات النموذج
         const data = {
             building: currentBuilding,
             totalBill: document.getElementById('totalBill').value,
@@ -172,19 +248,29 @@ async function handleData() {
             combo: document.getElementById('comboBox').value
         };
 
+        // بدء معاملة قاعدة البيانات
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+
+        // تحديد نوع العملية (تعديل/إضافة)
         if (isEditMode && currentData[editIndex]?.id) {
-            await set(ref(database, `buildings/${currentData[editIndex].id}`), data);
+            data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
+            await store.put(data); // انتظار اكتمال التعديل
             alert('✅ تم التعديل بنجاح');
         } else {
-            await push(ref(database, 'buildings'), data);
+            await store.add(data); // انتظار اكتمال الإضافة
             alert('✅ تمت الإضافة بنجاح');
         }
 
-        await loadDataFromFirebase();
+        // إعادة تحميل البيانات وتحديث الواجهة
+        await loadAllData();
+
     } catch (error) {
+        // معالجة الأخطاء
         console.error('فشلت العملية:', error);
         alert('حدث خطأ أثناء الحفظ: ' + error.message);
     } finally {
+        // إخفاء مؤشر التحميل في جميع الحالات
         hideLoader();
         clearForm();
         isEditMode = false;
@@ -225,20 +311,34 @@ document.querySelector('.search-box').addEventListener('input', (e) => {
 
 async function searchData(searchTerm) {
     try {
-        showLoader();
-        const snapshot = await database.ref('buildings')
-            .orderByChild('building')
-            .startAt(searchTerm)
-            .endAt(searchTerm + '\uf8ff')
-            .once('value');
-        const data = snapshot.val();
-        currentData = data ? Object.values(data) : [];
+        showLoader(); // هنا قبل البدء
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const index = store.index('building'); // ✅ استخدام الفهرس
+        const results = [];
+        
+        await new Promise((resolve) => {
+            const request = index.openCursor();
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const item = cursor.value;
+                    // البحث في جميع الحقول
+                    const match = Object.values(item).some(value => 
+                        String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    if (match) results.push(item);
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+        });
+        
+        currentData = results;
         updateListView();
-    } catch (error) {
-        console.error('فشل البحث:', error);
-        alert('فشل البحث: ' + error.message);
     } finally {
-        hideLoader();
+        hideLoader(); // هنا في النهاية
     }
 }
 
