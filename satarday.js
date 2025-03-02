@@ -7,9 +7,9 @@ let editIndex = -1;       // مؤشر لتحديد العنصر المراد ت�
 let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
 
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-import { getAuth } from "firebase/auth"; // لتسجيل الدخول
-import { getFirestore } from "firebase/firestore"; // لقاعدة البيانات
+import { getAuth } from "firebase/auth";
+import { getDatabase } from "firebase/database";
+
 
 const firebaseConfig = {
     apiKey: "AIzaSyD8Q29wId2UKCwOJ9QvE2tXCQsCs69G_Vw",
@@ -19,14 +19,12 @@ const firebaseConfig = {
     messagingSenderId: "636383310024",
     appId: "1:636383310024:web:f3cbf688e5991ff9aa75fd",
     measurementId: "G-6ECK0BDES2"
-  };
+};
 
-firebase.initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const auth = getAuth(app); // لتسجيل الدخول
-const db = getFirestore(app); // لقاعدة البيانات
-const database = firebase.database();
-// بيانات القوائم المنسدلة لكل عمارة
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const database = getDatabase(app);
+
 const comboBoxData = {
     'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
     'عمارة سلطانة 10075126558': ['شقة رقم 10 عدد 1','خدمات +عمال ريان بدون'],
@@ -74,15 +72,9 @@ function hideLoader() {
 async function loadDataFromFirebase() {
     try {
         showLoader();
-
-        // جلب البيانات من Firebase
-        const snapshot = await database.ref('buildings').once('value');
+        const snapshot = await get(ref(database, 'buildings'));
         const data = snapshot.val();
-
-        // تحويل البيانات إلى مصفوفة
         currentData = data ? Object.values(data) : [];
-
-        // تحديث الواجهة
         updateListView();
     } catch (error) {
         console.error('فشل تحميل البيانات:', error);
@@ -116,7 +108,7 @@ async function login() {
         const email = document.getElementById('username').value;
         const password = document.getElementById('password').value;
 
-        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         sessionStorage.setItem('authToken', user.uid);
@@ -130,7 +122,7 @@ async function login() {
 }
 
 function logout() {
-    firebase.auth().signOut().then(() => {
+    signOut(auth).then(() => {
         sessionStorage.clear();
         location.href = 'index.html';
     });
@@ -149,11 +141,7 @@ async function deleteEntry(id) {
 
     try {
         showLoader();
-
-        // حذف البيانات من Firebase
-        await database.ref('buildings/' + id).remove();
-
-        // إعادة تحميل البيانات
+        await remove(ref(database, `buildings/${id}`));
         await loadDataFromFirebase();
         clearForm();
     } catch (error) {
@@ -173,7 +161,6 @@ async function handleData() {
     try {
         showLoader();
 
-        // تجميع بيانات النموذج
         const data = {
             building: currentBuilding,
             totalBill: document.getElementById('totalBill').value,
@@ -185,18 +172,14 @@ async function handleData() {
             combo: document.getElementById('comboBox').value
         };
 
-        // إرسال البيانات إلى Firebase
         if (isEditMode && currentData[editIndex]?.id) {
-            // إذا كان في وضع التعديل، قم بتحديث البيانات
-            await database.ref('buildings/' + currentData[editIndex].id).set(data);
+            await set(ref(database, `buildings/${currentData[editIndex].id}`), data);
             alert('✅ تم التعديل بنجاح');
         } else {
-            // إذا كان في وضع الإضافة، قم بإضافة بيانات جديدة
-            await database.ref('buildings').push(data);
+            await push(ref(database, 'buildings'), data);
             alert('✅ تمت الإضافة بنجاح');
         }
 
-        // إعادة تحميل البيانات من Firebase
         await loadDataFromFirebase();
     } catch (error) {
         console.error('فشلت العملية:', error);
