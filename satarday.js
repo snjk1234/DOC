@@ -14,49 +14,6 @@ const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
 const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
 const DB_VERSION = 1;             // إصدار قاعدة البيانات
 
-/*****************************
- *    تهيئة قاعدة البيانات     *
- *****************************/
-function initializeDatabase() {
-    return new Promise((resolve, reject) => {
-        // فتح أو إنشاء قاعدة البيانات
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        // معالجة تحديث الهيكل
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            
-            // إنشاء مخزن البيانات إذا لم يكن موجوداً
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, {
-                    keyPath: 'id',
-                    autoIncrement: true
-                });
-                
-                // إنشاء فهارس لجميع الحقول للبحث السريع
-                store.createIndex('building', 'building', { unique: false });
-                store.createIndex('totalBill', 'totalBill', { unique: false });
-                store.createIndex('reading', 'reading', { unique: false });
-                store.createIndex('valueSAR', 'valueSAR', { unique: false });
-                store.createIndex('fromDate', 'fromDate', { unique: false });
-                store.createIndex('toDate', 'toDate', { unique: false });
-                store.createIndex('paymentAmount', 'paymentAmount', { unique: false });
-                store.createIndex('combo', 'combo', { unique: false });
-            }
-        };
-
-        // عند نجاح فتح قاعدة البيانات
-        request.onsuccess = (event) => {
-            db = event.target.result;
-            resolve(db); // إرجاع المرجع لقاعدة البيانات
-        };
-
-        // معالجة الأخطاء
-        request.onerror = (event) => {
-            reject(event.target.error);
-        };
-    });
-}
 
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
@@ -68,7 +25,7 @@ const firebaseConfig = {
     appId: "YOUR_APP_ID"
 };
 firebase.initializeApp(firebaseConfig);
-
+const database = firebase.database();
 // بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
     'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
@@ -89,7 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // التحقق من وجود توكن مصادقة
         if (sessionStorage.getItem('authToken')) {
-            db = await initializeDatabase();
+            
             // إخفاء واجهة الدخول وإظهار لوحة التحكم
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
@@ -122,24 +79,24 @@ function hideLoader() {
 /*****************************
  *      تحميل جميع البيانات      *
  *****************************/
-async function loadAllData() {
+async function loadDataFromFirebase() {
     try {
-        showLoader(); // هنا قبل بدء العملية
-        const transaction = db.transaction([STORE_NAME], 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-        
-        const data = await new Promise((resolve, reject) => {
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-        });
-        
-        currentData = data;
+        showLoader();
+
+        // جلب البيانات من Firebase
+        const snapshot = await database.ref('buildings').once('value');
+        const data = snapshot.val();
+
+        // تحويل البيانات إلى مصفوفة
+        currentData = data ? Object.values(data) : [];
+
+        // تحديث الواجهة
         updateListView();
     } catch (error) {
+        console.error('فشل تحميل البيانات:', error);
         alert('فشل تحميل البيانات: ' + error.message);
     } finally {
-        hideLoader(); // هنا بعد الانتهاء من جميع العمليات
+        hideLoader();
     }
 }
 
@@ -228,26 +185,23 @@ function saveDataToFirebase(data) {
 /*****************************
  *      حذف سجل      *
  *****************************/
-async function deleteEntry(id) {
+aasync function deleteEntry(id) {
     if (!confirm('هل أنت متأكد؟')) return;
-    
+
     try {
-        showLoader(); // هنا قبل الحذف
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        
-        await new Promise((resolve, reject) => {
-            const request = store.delete(id);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-        
-        await loadAllData(); // إعادة تحميل البيانات
+        showLoader();
+
+        // حذف البيانات من Firebase
+        await database.ref('buildings/' + id).remove();
+
+        // إعادة تحميل البيانات
+        await loadDataFromFirebase();
         clearForm();
     } catch (error) {
+        console.error('فشل الحذف:', error);
         alert('فشل الحذف: ' + error.message);
     } finally {
-        hideLoader(); // هنا بعد الانتهاء
+        hideLoader();
     }
 }
 
@@ -255,11 +209,9 @@ async function deleteEntry(id) {
  *   إدارة العمليات (إضافة/تعديل)   *
  *****************************/
 async function handleData() {
-    // التحقق من صحة النموذج أولاً
     if (!validateForm()) return;
 
     try {
-        // إظهار مؤشر التحميل
         showLoader();
 
         // تجميع بيانات النموذج
@@ -274,29 +226,23 @@ async function handleData() {
             combo: document.getElementById('comboBox').value
         };
 
-        // بدء معاملة قاعدة البيانات
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-
-        // تحديد نوع العملية (تعديل/إضافة)
+        // إرسال البيانات إلى Firebase
         if (isEditMode && currentData[editIndex]?.id) {
-            data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
-            await store.put(data); // انتظار اكتمال التعديل
+            // إذا كان في وضع التعديل، قم بتحديث البيانات
+            await database.ref('buildings/' + currentData[editIndex].id).set(data);
             alert('✅ تم التعديل بنجاح');
         } else {
-            await store.add(data); // انتظار اكتمال الإضافة
+            // إذا كان في وضع الإضافة، قم بإضافة بيانات جديدة
+            await database.ref('buildings').push(data);
             alert('✅ تمت الإضافة بنجاح');
         }
 
-        // إعادة تحميل البيانات وتحديث الواجهة
-        await loadAllData();
-
+        // إعادة تحميل البيانات من Firebase
+        await loadDataFromFirebase();
     } catch (error) {
-        // معالجة الأخطاء
         console.error('فشلت العملية:', error);
         alert('حدث خطأ أثناء الحفظ: ' + error.message);
     } finally {
-        // إخفاء مؤشر التحميل في جميع الحالات
         hideLoader();
         clearForm();
         isEditMode = false;
@@ -337,34 +283,23 @@ document.querySelector('.search-box').addEventListener('input', (e) => {
 
 async function searchData(searchTerm) {
     try {
-        showLoader(); // هنا قبل البدء
-        const transaction = db.transaction([STORE_NAME], 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('building'); // ✅ استخدام الفهرس
-        const results = [];
-        
-        await new Promise((resolve) => {
-            const request = index.openCursor();
-            request.onsuccess = (event) => {
-                const cursor = event.target.result;
-                if (cursor) {
-                    const item = cursor.value;
-                    // البحث في جميع الحقول
-                    const match = Object.values(item).some(value => 
-                        String(value).toLowerCase().includes(searchTerm.toLowerCase())
-                    );
-                    if (match) results.push(item);
-                    cursor.continue();
-                } else {
-                    resolve();
-                }
-            };
-        });
-        
-        currentData = results;
+        showLoader();
+
+        // البحث في Firebase
+        const snapshot = await database.ref('buildings')
+            .orderByChild('building')
+            .startAt(searchTerm)
+            .endAt(searchTerm + '\uf8ff')
+            .once('value');
+
+        const data = snapshot.val();
+        currentData = data ? Object.values(data) : [];
         updateListView();
+    } catch (error) {
+        console.error('فشل البحث:', error);
+        alert('فشل البحث: ' + error.message);
     } finally {
-        hideLoader(); // هنا في النهاية
+        hideLoader();
     }
 }
 
