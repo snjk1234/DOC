@@ -74,131 +74,208 @@ const comboBoxData = {
 document.addEventListener('DOMContentLoaded', async () => {
     try {
         // تهيئة قاعدة البيانات
-        db = await initializeDatabase();
+        
         
         // التحقق من وجود توكن مصادقة
-        if (localStorage.getItem('authToken')) {
+        if (sessionStorage.getItem('authToken')) {
+            db = await initializeDatabase();
             // إخفاء واجهة الدخول وإظهار لوحة التحكم
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
-            
+
             // تحميل البيانات وعرضها
-            loadAllData();
+            await loadAllData();
         }
     } catch (error) {
         console.error('فشل تهيئة التطبيق:', error);
-        alert('حدث خطأ في تهيئة قاعدة البيانات!');
+        alert('تعذر الاتصال بالنظام!');
+    } finally {
+        hideLoader(); // إخفاء المؤشر في جميع الحالات
     }
 });
 
+
+
+/*****************************
+ *      إدارة مؤشر التحميل      *
+ *****************************/
+function showLoader() {
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+
+function hideLoader() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// مثال على الاستخدام في دالة تحميل البيانات
 /*****************************
  *      تحميل جميع البيانات      *
  *****************************/
-function loadAllData() {
+async function loadAllData() {
+    try {
+        showLoader(); // هنا قبل بدء العملية
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+        
+        const data = await new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        
+        currentData = data;
+        updateListView();
+    } catch (error) {
+        alert('فشل تحميل البيانات: ' + error.message);
+    } finally {
+        hideLoader(); // هنا بعد الانتهاء من جميع العمليات
+    }
+}
+
+async function loadPaginatedData(page = 1, pageSize = 10) {
     const transaction = db.transaction([STORE_NAME], 'readonly');
     const store = transaction.objectStore(STORE_NAME);
-    
-    // جلب جميع السجلات
-    const request = store.getAll();
-    
-    request.onsuccess = () => {
-        currentData = request.result;
-        updateListView(); // تحديث الواجهة
-    };
-    
-    // معالجة أخطاء المعاملة
-    transaction.onerror = (event) => {
-        console.error('فشل تحميل البيانات:', event.target.error);
-    };
+    const request = store.openCursor();
+    const results = [];
+    let counter = 0;
+
+    await new Promise((resolve) => {
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor && counter < (page * pageSize)) {
+                if (counter >= ((page - 1) * pageSize)) {
+                    results.push(cursor.value);
+                }
+                counter++;
+                cursor.continue();
+            } else {
+                resolve();
+            }
+        };
+    });
+
+    currentData = results;
+    updateListView();
 }
 
 /*****************************
  *      إدارة المصادقة      *
  *****************************/
-function login() {
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+async function login() {
+    try {
+        showLoader(); // قبل التحقق من البيانات
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        // تشفير كلمة المرور باستخدام SHA-256
+        const hashedPassword = CryptoJS.SHA256(password).toString();
     
-    // تشفير كلمة المرور باستخدام SHA-256
-    const hashedPassword = CryptoJS.SHA256(password).toString();
+        // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
+        const validUsers = {
+            admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
+        };
+    
+        // التحقق من صحة البيانات
+        if (validUsers[username] === hashedPassword) {
+            sessionStorage.setItem('authToken', 'generated_token_here');
+            location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
+        } else {
+            alert('بيانات الدخول غير صحيحة!');
+        }
+        if (validUsers[username] === hashedPassword) { // ✅ استخدام الشرط مباشرة
+            sessionStorage.setItem('authToken', 'generated_token_here');
+            location.reload();
+        }
+    } catch (error) {
+        alert('فشل التسجيل: ' + error.message);
+    } finally {
+        hideLoader(); // بعد اكتمال العملية
+    }
+}
 
-    // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
-    const validUsers = {
-        admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
-    };
+// إضافة دالة تسجيل الخروج (اختياري)
+function logout() {
+    sessionStorage.clear(); // مسح جميع البيانات المؤقتة
+    location.href = 'index.html'; // إعادة التوجيه
+}
 
-    // التحقق من صحة البيانات
-    if (validUsers[username] === hashedPassword) {
-        localStorage.setItem('authToken', 'generated_token_here');
-        location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
-    } else {
-        alert('بيانات الدخول غير صحيحة!');
+/*****************************
+ *      حذف سجل      *
+ *****************************/
+async function deleteEntry(id) {
+    if (!confirm('هل أنت متأكد؟')) return;
+    
+    try {
+        showLoader(); // هنا قبل الحذف
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        await new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+        
+        await loadAllData(); // إعادة تحميل البيانات
+        clearForm();
+    } catch (error) {
+        alert('فشل الحذف: ' + error.message);
+    } finally {
+        hideLoader(); // هنا بعد الانتهاء
     }
 }
 
 /*****************************
  *   إدارة العمليات (إضافة/تعديل)   *
  *****************************/
-function handleData() {
-    if (!validateForm()) return; // التحقق من صحة النموذج
+async function handleData() {
+    // التحقق من صحة النموذج أولاً
+    if (!validateForm()) return;
 
-    // تجميع بيانات النموذج
-    const data = {
-        building: currentBuilding,
-        totalBill: document.getElementById('totalBill').value,
-        reading: document.getElementById('reading').value,
-        valueSAR: document.getElementById('valueSAR').value,
-        fromDate: document.getElementById('fromDate').value,
-        toDate: document.getElementById('toDate').value,
-        paymentAmount: document.getElementById('paymentAmount').value,
-        combo: document.getElementById('comboBox').value
-    };
+    try {
+        // إظهار مؤشر التحميل
+        showLoader();
 
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
+        // تجميع بيانات النموذج
+        const data = {
+            building: currentBuilding,
+            totalBill: document.getElementById('totalBill').value,
+            reading: document.getElementById('reading').value,
+            valueSAR: document.getElementById('valueSAR').value,
+            fromDate: document.getElementById('fromDate').value,
+            toDate: document.getElementById('toDate').value,
+            paymentAmount: document.getElementById('paymentAmount').value,
+            combo: document.getElementById('comboBox').value
+        };
 
-    // تحديد نوع العملية (تعديل/إضافة)
-    if (isEditMode) {
-        data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
-        const request = store.put(data);
-        
-        request.onsuccess = async () => {
+        // بدء معاملة قاعدة البيانات
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+
+        // تحديد نوع العملية (تعديل/إضافة)
+        if (isEditMode && currentData[editIndex]?.id) {
+            data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
+            await store.put(data); // انتظار اكتمال التعديل
             alert('✅ تم التعديل بنجاح');
-            await loadAllData(); // تأكد من تحديث البيانات
-        };
-    } else {
-        const request = store.add(data);
-        
-        request.onsuccess = async () => {
-            alert('✅ تم الاضافة بنجاح');
-            await loadAllData(); // تأكد من تحديث البيانات
-        };
+        } else {
+            await store.add(data); // انتظار اكتمال الإضافة
+            alert('✅ تمت الإضافة بنجاح');
+        }
+
+        // إعادة تحميل البيانات وتحديث الواجهة
+        await loadAllData();
+
+    } catch (error) {
+        // معالجة الأخطاء
+        console.error('فشلت العملية:', error);
+        alert('حدث خطأ أثناء الحفظ: ' + error.message);
+    } finally {
+        // إخفاء مؤشر التحميل في جميع الحالات
+        hideLoader();
+        clearForm();
+        isEditMode = false;
+        editIndex = -1;
     }
-
-    // معالجة الأخطاء
-    transaction.onerror = (event) => {
-        console.error('فشلت العملية:', event.target.error);
-        alert('حدث خطأ أثناء الحفظ!');
-    };
-
-    clearForm(); // مسح النموذج
-    isEditMode = false;
-    editIndex = -1;
-}
-
-function deleteEntry(id) {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    store.delete(id).onsuccess = () => {
-        loadAllData();
-        alert('✅ تم الحذف بنجاح');
-    };
-}
-
-// إضافة دالة تسجيل الخروج (اختياري)
-function logout() {
-    localStorage.clear(); // مسح جميع البيانات المؤقتة
-    location.href = 'index.html'; // إعادة التوجيه
 }
 
 function showForm(building) {
@@ -223,28 +300,46 @@ function populateComboBox(building) {
 /*****************************
  *      البحث في البيانات      *
  *****************************/
-function searchData(searchTerm) {
-    const index = store.index('building'); // مثال باستخدام فهرس العمارة
-    const request = index.getAll(searchTerm);
 
-    // فتح مؤشر للبحث في جميع السجلات
-    store.openCursor().onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-            const item = cursor.value;
-            
-            // البحث في جميع حقول السجل
-            const match = Object.values(item).some(value =>
-                String(value).toLowerCase().includes(searchTerm.toLowerCase())
-            );
-            
-            if (match) results.push(item);
-            cursor.continue();
-        } else {
-            currentData = results;
-            updateListView(); // تحديث القائمة
-        }
-    };
+let searchTimeout;
+document.querySelector('.search-box').addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        searchData(e.target.value);
+    }, 300); // تأخير 300ms
+});
+
+async function searchData(searchTerm) {
+    try {
+        showLoader(); // هنا قبل البدء
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const index = store.index('building'); // ✅ استخدام الفهرس
+        const results = [];
+        
+        await new Promise((resolve) => {
+            const request = index.openCursor();
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const item = cursor.value;
+                    // البحث في جميع الحقول
+                    const match = Object.values(item).some(value => 
+                        String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    if (match) results.push(item);
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+        });
+        
+        currentData = results;
+        updateListView();
+    } finally {
+        hideLoader(); // هنا في النهاية
+    }
 }
 
 function editEntry(index) {
@@ -361,4 +456,12 @@ function updateListView() {
         row.onclick = () => editEntry(index);
         listContent.appendChild(row);
     });
+}
+
+function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+}
+
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
 }

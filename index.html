@@ -7,6 +7,7 @@
     <link rel="icon" href="logo.png" type="image/png">
     <!-- إضافة مكتبة التشفير -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
     <!-- واجهة تسجيل الدخول -->
@@ -26,15 +27,16 @@
             <img src="logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
             <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
             <div class="building-buttons">
-                <div class="building-buttons">
-                    <input type="search" id="searchInput" placeholder="بحث في جميع الحقول" oninput="searchData(this.value)">
-                    <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
-                    <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
-                    <button onclick="showForm('عمارة المنارات 30059069267')">عمارة المنارات 30059069267</button>
-                    <button onclick="showForm('عمارة السيل 30059012783')">عمارة السيل 30059012783</button>
-                    <button onclick="showForm('عمارة المكتب القديم 10074768485')">عمارة المكتب القديم 10074768485</button>
-                    <button onclick="showForm('عمارة التجارية 30059069178')">عمارة التجارية 30059069178</button>
-                </div>
+                <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
+                <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
+                <button onclick="showForm('عمارة المنارات 30059069267')">عمارة المنارات 30059069267</button>
+                <button onclick="showForm('عمارة السيل 30059012783')">عمارة السيل 30059012783</button>
+                <button onclick="showForm('عمارة المكتب القديم 10074768485')">عمارة المكتب القديم 10074768485</button>
+                <button onclick="showForm('عمارة التجارية 30059069178')">عمارة التجارية 30059069178</button>
+            </div>
+            <div class="searchData">
+                <input type="search" placeholder="ابحث هنا" class="search-box">
+                <i class="fas fa-search search-icon"></i>
             </div>
             <div class="group-all">
                 <!-- نموذج الإدخال -->
@@ -64,6 +66,8 @@
                     <div class="form-actions">
                         <button onclick="handleData()">حفظ او تعديل</button> <!-- زر موحد -->
                         <button onclick="goBack()">رجوع</button>
+                        <button onclick="deleteEntry(currentData[editIndex]?.id)" class="delete-btn">حذف</button>
+
                     </div>
                 </div>
     
@@ -88,5 +92,9 @@
         </div>
     
         <script src="satarday.js"></script>
+        <div id="loadingOverlay">
+            <div class="spinner"></div>
+            <p class="loading-text">جارٍ التحميل...</p>
+        </div>
     </body>
 </html>
