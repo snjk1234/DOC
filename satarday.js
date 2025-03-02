@@ -58,6 +58,17 @@ function initializeDatabase() {
     });
 }
 
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    databaseURL: "YOUR_DATABASE_URL",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+};
+firebase.initializeApp(firebaseConfig);
+
 // بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
     'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
@@ -158,6 +169,15 @@ async function loadPaginatedData(page = 1, pageSize = 10) {
     updateListView();
 }
 
+function loadDataFromFirebase() {
+    const db = firebase.database();
+    db.ref('buildings').on('value', (snapshot) => {
+        const data = snapshot.val();
+        currentData = data || [];
+        updateListView();
+    });
+}
+
 /*****************************
  *      إدارة المصادقة      *
  *****************************/
@@ -197,6 +217,12 @@ async function login() {
 function logout() {
     sessionStorage.clear(); // مسح جميع البيانات المؤقتة
     location.href = 'index.html'; // إعادة التوجيه
+}
+
+
+function saveDataToFirebase(data) {
+    const db = firebase.database();
+    db.ref('buildings').set(data);
 }
 
 /*****************************
