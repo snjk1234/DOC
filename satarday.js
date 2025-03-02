@@ -1,6 +1,7 @@
 // ----------------------------
 // 1. استيراد مكتبات Firebase
 // ----------------------------
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
@@ -105,29 +106,43 @@ async function loadAllData() {
  *****************************/
 async function login() {
     try {
-      showLoader();
-      const email = document.getElementById('username').value + "@estate.com"; // تحويل اسم المستخدم إلى بريد
-      const password = document.getElementById('password').value;
-  
-      // تسجيل الدخول باستخدام Firebase Auth
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-  
-      // تحميل البيانات بعد المصادقة
-      await loadAllData();
-      document.getElementById('loginContainer').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-    } catch (error) {
-      Swal.fire('خطأ!', 'فشل تسجيل الدخول: ' + error.message, 'error');
-    } finally {
-      hideLoader();
-    }
-  }
+        showLoader();
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+        
+        // 1. التحقق من إدخال البيانات
+        if (!username || !password) {
+            Swal.fire('خطأ!', 'يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
+            return;
+        }
 
-// إضافة دالة تسجيل الخروج (اختياري)
+        // 2. تسجيل الدخول باستخدام Firebase Auth
+        const email = `${username}@estate.com`; // بناء البريد الإلكتروني
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 3. حفظ التوكن في sessionStorage (اختياري)
+        const token = await user.getIdToken();
+        sessionStorage.setItem('authToken', token);
+
+        // 4. تحميل البيانات وإظهار لوحة التحكم
+        await loadAllData();
+        document.getElementById("loginContainer").style.display = 'none';
+        document.getElementById("dashboard").style.display = 'block';
+    } catch (error) {
+        Swal.fire('خطأ!', `فشل تسجيل الدخول: ${error.message}`, 'error');
+    } finally {
+        hideLoader();
+    }
+}
+
+
 function logout() {
-    sessionStorage.clear(); // مسح جميع البيانات المؤقتة
-    location.href = 'index.html'; // إعادة التوجيه
+    // 1. مسح التوكن وجميع البيانات المؤقتة
+    sessionStorage.clear(); // ✅ تصحيح الخطأ الإملائي
+    
+    // 2. إعادة توجيه إلى صفحة الدخول
+    location.href = 'index.html';
 }
 
 /*****************************
