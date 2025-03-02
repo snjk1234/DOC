@@ -5,25 +5,17 @@ let currentBuilding = ''; // تخزين اسم العمارة المحددة
 let currentData = [];     // مصفوفة تخزن بيانات العقارات
 let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
 let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
-let db;                   // المرجع الرئيسي لقاعدة البيانات
-
-/*****************************
- *      ثوابت قاعدة البيانات      *
- *****************************/
-const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
-const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
-const DB_VERSION = 1;             // إصدار قاعدة البيانات
-
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-};
+    apiKey: "AIzaSyD8Q29wId2UKCwOJ9QvE2tXCQsCs69G_Vw",
+    authDomain: "doce-27e38.firebaseapp.com",
+    projectId: "doce-27e38",
+    storageBucket: "doce-27e38.firebasestorage.app",
+    messagingSenderId: "636383310024",
+    appId: "1:636383310024:web:f3cbf688e5991ff9aa75fd",
+    measurementId: "G-6ECK0BDES2"
+  };
+
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
 // بيانات القوائم المنسدلة لكل عمارة
@@ -41,24 +33,16 @@ const comboBoxData = {
  *****************************/
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // تهيئة قاعدة البيانات
-        
-        
-        // التحقق من وجود توكن مصادقة
         if (sessionStorage.getItem('authToken')) {
-            
-            // إخفاء واجهة الدخول وإظهار لوحة التحكم
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('dashboard').style.display = 'block';
-
-            // تحميل البيانات وعرضها
-            await loadAllData();
+            await loadDataFromFirebase();
         }
     } catch (error) {
         console.error('فشل تهيئة التطبيق:', error);
         alert('تعذر الاتصال بالنظام!');
     } finally {
-        hideLoader(); // إخفاء المؤشر في جميع الحالات
+        hideLoader();
     }
 });
 
@@ -100,39 +84,19 @@ async function loadDataFromFirebase() {
     }
 }
 
-async function loadPaginatedData(page = 1, pageSize = 10) {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.openCursor();
-    const results = [];
-    let counter = 0;
-
-    await new Promise((resolve) => {
-        request.onsuccess = (event) => {
-            const cursor = event.target.result;
-            if (cursor && counter < (page * pageSize)) {
-                if (counter >= ((page - 1) * pageSize)) {
-                    results.push(cursor.value);
-                }
-                counter++;
-                cursor.continue();
-            } else {
-                resolve();
-            }
-        };
-    });
-
-    currentData = results;
-    updateListView();
-}
-
-function loadDataFromFirebase() {
-    const db = firebase.database();
-    db.ref('buildings').on('value', (snapshot) => {
+async function loadDataFromFirebase() {
+    try {
+        showLoader();
+        const snapshot = await database.ref('buildings').once('value');
         const data = snapshot.val();
-        currentData = data || [];
+        currentData = data ? Object.values(data) : [];
         updateListView();
-    });
+    } catch (error) {
+        console.error('فشل تحميل البيانات:', error);
+        alert('فشل تحميل البيانات: ' + error.message);
+    } finally {
+        hideLoader();
+    }
 }
 
 /*****************************
@@ -140,42 +104,29 @@ function loadDataFromFirebase() {
  *****************************/
 async function login() {
     try {
-        showLoader(); // قبل التحقق من البيانات
-        const username = document.getElementById('username').value;
+        showLoader();
+        const email = document.getElementById('username').value;
         const password = document.getElementById('password').value;
-        
-        // تشفير كلمة المرور باستخدام SHA-256
-        const hashedPassword = CryptoJS.SHA256(password).toString();
-    
-        // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
-        const validUsers = {
-            admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
-        };
-    
-        // التحقق من صحة البيانات
-        if (validUsers[username] === hashedPassword) {
-            sessionStorage.setItem('authToken', 'generated_token_here');
-            location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
-        } else {
-            alert('بيانات الدخول غير صحيحة!');
-        }
-        if (validUsers[username] === hashedPassword) { // ✅ استخدام الشرط مباشرة
-            sessionStorage.setItem('authToken', 'generated_token_here');
-            location.reload();
-        }
+
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+
+        sessionStorage.setItem('authToken', user.uid);
+        location.reload();
     } catch (error) {
-        alert('فشل التسجيل: ' + error.message);
+        console.error('فشل التسجيل:', error);
+        alert('بيانات الدخول غير صحيحة!');
     } finally {
-        hideLoader(); // بعد اكتمال العملية
+        hideLoader();
     }
 }
 
-// إضافة دالة تسجيل الخروج (اختياري)
 function logout() {
-    sessionStorage.clear(); // مسح جميع البيانات المؤقتة
-    location.href = 'index.html'; // إعادة التوجيه
+    firebase.auth().signOut().then(() => {
+        sessionStorage.clear();
+        location.href = 'index.html';
+    });
 }
-
 
 function saveDataToFirebase(data) {
     const db = firebase.database();
@@ -185,7 +136,7 @@ function saveDataToFirebase(data) {
 /*****************************
  *      حذف سجل      *
  *****************************/
-aasync function deleteEntry(id) {
+async function deleteEntry(id) {
     if (!confirm('هل أنت متأكد؟')) return;
 
     try {
@@ -284,14 +235,11 @@ document.querySelector('.search-box').addEventListener('input', (e) => {
 async function searchData(searchTerm) {
     try {
         showLoader();
-
-        // البحث في Firebase
         const snapshot = await database.ref('buildings')
             .orderByChild('building')
             .startAt(searchTerm)
             .endAt(searchTerm + '\uf8ff')
             .once('value');
-
         const data = snapshot.val();
         currentData = data ? Object.values(data) : [];
         updateListView();
