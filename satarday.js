@@ -3,31 +3,28 @@
  *****************************/
 
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, getDocs, updateDoc, doc, deleteDoc } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getFirestore, collection } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-const firebaseConfig = { 
-    const firebaseConfig = {
+const firebaseConfig = {
     apiKey: "AIzaSyD8Q29wId2UKCwOJ9QvE2tXCQsCs69G_Vw",
     authDomain: "doce-27e38.firebaseapp.com",
     databaseURL: "https://doce-27e38-default-rtdb.firebaseio.com",
     projectId: "doce-27e38",
     storageBucket: "doce-27e38.firebasestorage.app",
     messagingSenderId: "636383310024",
-    appId: "1:636383310024:web:f3cbf688e5991ff9aa75fd",
-    measurementId: "G-6ECK0BDES2"
-  };
- };
+    appId: "1:636383310024:web:354665d23bb2221caa75fd",
+    measurementId: "G-JL94HGJJMH",
+};
+
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const db = getFirestore(app); // تعريف db هنا
 const auth = getAuth(app);
 
 let currentBuilding = ''; // تخزين اسم العمارة المحددة
 let currentData = [];     // مصفوفة تخزن بيانات العقارات
 let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
 let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
-let db;                   // المرجع الرئيسي لقاعدة البيانات
-
 /*****************************
  *      ثوابت قاعدة البيانات      *
  *****************************/
@@ -40,10 +37,9 @@ const DB_VERSION = 1;             // إصدار قاعدة البيانات
  *****************************/
 function initializeDatabase() {
     return new Promise((resolve, reject) => {
-        // فتح أو إنشاء قاعدة البيانات
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-        // معالجة تحديث الهيكل
+        const DB_NAME = 'EstateDB';
+        const STORE_NAME = 'Buildings';
+        const DB_VERSION = 1;
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
             
@@ -68,13 +64,11 @@ function initializeDatabase() {
 
         // عند نجاح فتح قاعدة البيانات
         request.onsuccess = (event) => {
-            db = event.target.result;
-            resolve(db); // إرجاع المرجع لقاعدة البيانات
+            resolve(event.target.result); // ✅
         };
 
-        // معالجة الأخطاء
         request.onerror = (event) => {
-            reject(event.target.error);
+            reject(event.target.error); // ✅
         };
     });
 }
