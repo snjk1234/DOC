@@ -1,77 +1,42 @@
-/*****************************
- *         المتغيرات العامة         *
- *****************************/
-
+// ----------------------------
+// 1. استيراد مكتبات Firebase
+// ----------------------------
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection } from "firebase/firestore";
+import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { onSnapshot } from "firebase/firestore";
 
+// ----------------------------
+// 2. إعدادات التهيئة
+// ----------------------------
 const firebaseConfig = {
-    apiKey: "AIzaSyD8Q29wId2UKCwOJ9QvE2tXCQsCs69G_Vw",
-    authDomain: "doce-27e38.firebaseapp.com",
-    databaseURL: "https://doce-27e38-default-rtdb.firebaseio.com",
-    projectId: "doce-27e38",
-    storageBucket: "doce-27e38.firebasestorage.app",
-    messagingSenderId: "636383310024",
-    appId: "1:636383310024:web:354665d23bb2221caa75fd",
-    measurementId: "G-JL94HGJJMH",
+  apiKey: "AIzaSyD8029Mu2UKCwOJ90VE2tXCQ5Cs69G_W",
+  authDomain: "docc-27e38.firebaseapp.com",
+  databaseURL: "https://docc-27e38-default-rtdb.firebaseio.com",
+  projectId: "docc-27e38",
+  storageBucket: "docc-27e38.appspot.com",
+  messagingSenderId: "636383310824",
+  appId: "1:636383310824:web:354665d23bb2221caa75fd",
+  measurementId: "G-JL94HGJJMH"
 };
 
+// ----------------------------
+// 3. تهيئة التطبيق
+// ----------------------------
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app); // تعريف db هنا
-const auth = getAuth(app);
-
-let currentBuilding = ''; // تخزين اسم العمارة المحددة
-let currentData = [];     // مصفوفة تخزن بيانات العقارات
-let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
-let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
-/*****************************
- *      ثوابت قاعدة البيانات      *
- *****************************/
-const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
-const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
-const DB_VERSION = 1;             // إصدار قاعدة البيانات
-
-/*****************************
- *    تهيئة قاعدة البيانات     *
- *****************************/
-function initializeDatabase() {
-    return new Promise((resolve, reject) => {
-        const DB_NAME = 'EstateDB';
-        const STORE_NAME = 'Buildings';
-        const DB_VERSION = 1;
-        request.onupgradeneeded = (event) => {
-            const db = event.target.result;
-            
-            // إنشاء مخزن البيانات إذا لم يكن موجوداً
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, {
-                    keyPath: 'id',
-                    autoIncrement: true
-                });
-                
-                // إنشاء فهارس لجميع الحقول للبحث السريع
-                store.createIndex('building', 'building', { unique: false });
-                store.createIndex('totalBill', 'totalBill', { unique: false });
-                store.createIndex('reading', 'reading', { unique: false });
-                store.createIndex('valueSAR', 'valueSAR', { unique: false });
-                store.createIndex('fromDate', 'fromDate', { unique: false });
-                store.createIndex('toDate', 'toDate', { unique: false });
-                store.createIndex('paymentAmount', 'paymentAmount', { unique: false });
-                store.createIndex('combo', 'combo', { unique: false });
-            }
-        };
-
-        // عند نجاح فتح قاعدة البيانات
-        request.onsuccess = (event) => {
-            resolve(event.target.result); // ✅
-        };
-
-        request.onerror = (event) => {
-            reject(event.target.error); // ✅
-        };
-    });
-}
+const db = getFirestore(app); // قاعدة بيانات Firestore
+const auth = getAuth(app); // مصادقة Firebase
+const unsubscribe = onSnapshot(collection(db, "Buildings"), (snapshot) => {
+    currentData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    updateListView();
+});
+// ----------------------------
+// 4. المتغيرات العامة
+// ----------------------------
+let currentBuilding = ''; // اسم العمارة المحددة
+let currentData = []; // بيانات العقارات
+let editIndex = -1; // مؤشر التعديل
+let isEditMode = false; // حالة التعديل
 
 // بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
@@ -88,10 +53,6 @@ const comboBoxData = {
  *****************************/
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // تهيئة قاعدة البيانات
-        
-        
-        // التحقق من وجود توكن مصادقة
         if (sessionStorage.getItem('authToken')) {
             db = await initializeDatabase();
             // إخفاء واجهة الدخول وإظهار لوحة التحكم
@@ -129,11 +90,8 @@ function hideLoader() {
 async function loadAllData() {
     try {
       showLoader();
-      const querySnapshot = await getDocs(collection(db, "buildings"));
-      currentData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
+      const querySnapshot = await getDocs(collection(db, "Buildings")); // ✅ Firestore
+      ccurrentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       updateListView();
     } catch (error) {
       Swal.fire('خطأ!', 'فشل تحميل البيانات: ' + error.message, 'error');
@@ -141,32 +99,6 @@ async function loadAllData() {
       hideLoader();
     }
   }
-
-async function loadPaginatedData(page = 1, pageSize = 10) {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.openCursor();
-    const results = [];
-    let counter = 0;
-
-    await new Promise((resolve) => {
-        request.onsuccess = (event) => {
-            const cursor = event.target.result;
-            if (cursor && counter < (page * pageSize)) {
-                if (counter >= ((page - 1) * pageSize)) {
-                    results.push(cursor.value);
-                }
-                counter++;
-                cursor.continue();
-            } else {
-                resolve();
-            }
-        };
-    });
-
-    currentData = results;
-    updateListView();
-}
 
 /*****************************
  *      إدارة المصادقة      *
@@ -202,21 +134,31 @@ function logout() {
  *      حذف سجل      *
  *****************************/
 async function deleteEntry(id) {
-    const result = await Swal.fire({ /* ... */ });
+    const result = await Swal.fire({     
+        title: 'هل أنت متأكد؟',
+        text: "لا يمكنك التراجع عن هذا الإجراء!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'نعم، احذف!',
+        cancelButtonText: 'إلغاء'
+    });
   
     if (!result.isConfirmed) return;
   
     try {
-      showLoader();
-      await deleteDoc(doc(db, "buildings", id));
-      await loadAllData();
-      Swal.fire('تم الحذف!', '', 'success');
+        showLoader();
+        // حذف المستند من Firestore باستخدام الـ ID
+        await deleteDoc(doc(db, "buildings", id));
+        await loadAllData(); // إعادة تحميل البيانات
+        Swal.fire('تم الحذف!', '', 'success'); // ✅ تصحيح الرسالة
     } catch (error) {
-      Swal.fire('خطأ!', 'فشل الحذف: ' + error.message, 'error');
+        Swal.fire('خطأ!', 'فشل الحذف: ' + error.message, 'error'); // ✅ تصحيح الرسالة
     } finally {
-      hideLoader();
+        hideLoader();
     }
-  }
+}
 
 /*****************************
  *   إدارة العمليات (إضافة/تعديل)   *
@@ -234,19 +176,16 @@ async function handleData() {
         fromDate: document.getElementById('fromDate').value,
         toDate: document.getElementById('toDate').value,
         paymentAmount: document.getElementById('paymentAmount').value,
-        combo: document.getElementById('comboBox').value,
-        timestamp: new Date() // إضافة طابع زمني
+        combo: document.getElementById('comboBox').value
       };
   
-      const buildingsRef = collection(db, "buildings");
-  
       if (isEditMode) {
-        // تحديث البيانات
-        await updateDoc(doc(db, "buildings", currentData[editIndex].id), data);
+        // تحديث البيانات في Firebase
+        await updateDoc(doc(db, "Buildings", currentData[editIndex].id), data);
         Swal.fire('نجاح!', 'تم التعديل', 'success');
       } else {
-        // إضافة جديدة
-        await addDoc(buildingsRef, data);
+        // إضافة جديدة إلى Firebase
+        await addDoc(collection(db, "Buildings"), data);
         Swal.fire('نجاح!', 'تمت الإضافة', 'success');
       }
   
