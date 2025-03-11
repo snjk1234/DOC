@@ -85,7 +85,7 @@ body:hover::after {
     gap: 10px;
 }
 .building-buttons {
-    display: inline grid  ;
+    display: inline grid ;
     grid-template-columns: repeat(2, 1fr);
     gap: 15px;
     margin-bottom: 30px;
@@ -125,7 +125,7 @@ button {
 
 .searchData{
     width: 30%;
-    height: 50px;
+    height: auto;
     display: inline-flex;
     position: relative;
 
@@ -393,30 +393,4 @@ select#comboBox option:checked {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-
-@media (max-width: 768px) {
-    .building-buttons {
-        grid-template-columns: 1fr !important;
-        width: 100% !important;
-    }
-
-    .searchData {
-        width: 100% !important;
-    }
-
-    .group-all {
-        flex-direction: column;
-    }
-
-    .form-container, .listview {
-        width: 100% !important;
-        margin: 10px 0;
-    }
-
-    .logout-btn {
-        top: 120px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-    }
 }

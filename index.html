@@ -7,10 +7,11 @@
     <link rel="icon" href="logo.png" type="image/png">
     <!-- إضافة مكتبة التشفير -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <!--<script src="https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec"></script>-->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </head>
 <body>
-    <!-- واجهة تسجيل الدخول -->
+    <!-- واجهة تسجيل اااالدخول -->
     <div class="login-container" id="loginContainer">
         <h2>تسجيل الدخول</h2>
         <div class="input-group">
@@ -52,7 +53,7 @@
                         <input type="number" id="valueSAR" placeholder="القيمة بالريال" step="any">
                     </div>
                     <div class="input-group">
-                        <input type="date" id="fromDate" onchange="updateToDateMin()" placeholder="الفترة من">
+                        <input type="date" id="fromDate" placeholder="الفترة من" >
                     </div>
                     <div class="input-group">
                         <input type="date" id="toDate" placeholder="الفترة إلى">
@@ -66,7 +67,6 @@
                     <div class="form-actions">
                         <button onclick="handleData()">حفظ او تعديل</button> <!-- زر موحد -->
                         <button onclick="goBack()">رجوع</button>
-                        <button onclick="exportToExcel()" class="export-btn">تصدير إلى Excel</button>
                         <button onclick="deleteEntry(currentData[editIndex]?.id)" class="delete-btn">حذف</button>
 
                     </div>
@@ -91,10 +91,7 @@
                 </div>
             </div>
         </div>
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js"></script>
+    
         <script src="satarday.js"></script>
         <div id="loadingOverlay">
             <div class="spinner"></div>

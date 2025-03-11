@@ -1,43 +1,62 @@
-// ----------------------------
-// 1. استيراد مكتبات Firebase
-// ----------------------------
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, getDocs } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
-import { onSnapshot } from "firebase/firestore";
+/*****************************
+ *         المتغيرات العامة         *
+ *****************************/
+let currentBuilding = ''; // تخزين اسم العمارة المحددة
+let currentData = [];     // مصفوفة تخزن بيانات العقارات
+let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
+let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
+let db;                   // المرجع الرئيسي لقاعدة البيانات
 
-// ----------------------------
-// 2. إعدادات التهيئة
-// ----------------------------
-const firebaseConfig = {
-  apiKey: "AIzaSyD8029Mu2UKCwOJ90VE2tXCQ5Cs69G_W",
-  authDomain: "docc-27e38.firebaseapp.com",
-  databaseURL: "https://docc-27e38-default-rtdb.firebaseio.com",
-  projectId: "docc-27e38",
-  storageBucket: "docc-27e38.appspot.com",
-  messagingSenderId: "636383310824",
-  appId: "1:636383310824:web:354665d23bb2221caa75fd",
-  measurementId: "G-JL94HGJJMH"
-};
+/*****************************
+ *      ثوابت قاعدة البيانات      *
+ *****************************/
+const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
+const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
+const DB_VERSION = 1;             // إصدار قاعدة البيانات
 
-// ----------------------------
-// 3. تهيئة التطبيق
-// ----------------------------
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app); // قاعدة بيانات Firestore
-const auth = getAuth(app); // مصادقة Firebase
-const unsubscribe = onSnapshot(collection(db, "Buildings"), (snapshot) => {
-    currentData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    updateListView();
-});
-// ----------------------------
-// 4. المتغيرات العامة
-// ----------------------------
-let currentBuilding = ''; // اسم العمارة المحددة
-let currentData = []; // بيانات العقارات
-let editIndex = -1; // مؤشر التعديل
-let isEditMode = false; // حالة التعديل
+/*****************************
+ *    تهيئة قاعدة البيانات     *
+ *****************************/
+function initializeDatabase() {
+    return new Promise((resolve, reject) => {
+        // فتح أو إنشاء قاعدة البيانات
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        // معالجة تحديث الهيكل
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            
+            // إنشاء مخزن البيانات إذا لم يكن موجوداً
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                const store = db.createObjectStore(STORE_NAME, {
+                    keyPath: 'id',
+                    autoIncrement: true
+                });
+                
+                // إنشاء فهارس لجميع الحقول للبحث السريع
+                store.createIndex('building', 'building', { unique: false });
+                store.createIndex('totalBill', 'totalBill', { unique: false });
+                store.createIndex('reading', 'reading', { unique: false });
+                store.createIndex('valueSAR', 'valueSAR', { unique: false });
+                store.createIndex('fromDate', 'fromDate', { unique: false });
+                store.createIndex('toDate', 'toDate', { unique: false });
+                store.createIndex('paymentAmount', 'paymentAmount', { unique: false });
+                store.createIndex('combo', 'combo', { unique: false });
+            }
+        };
+
+        // عند نجاح فتح قاعدة البيانات
+        request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db); // إرجاع المرجع لقاعدة البيانات
+        };
+
+        // معالجة الأخطاء
+        request.onerror = (event) => {
+            reject(event.target.error);
+        };
+    });
+}
 
 // بيانات القوائم المنسدلة لكل عمارة
 const comboBoxData = {
@@ -54,6 +73,10 @@ const comboBoxData = {
  *****************************/
 document.addEventListener('DOMContentLoaded', async () => {
     try {
+        // تهيئة قاعدة البيانات
+        
+        
+        // التحقق من وجود توكن مصادقة
         if (sessionStorage.getItem('authToken')) {
             db = await initializeDatabase();
             // إخفاء واجهة الدخول وإظهار لوحة التحكم
@@ -90,129 +113,194 @@ function hideLoader() {
  *****************************/
 async function loadAllData() {
     try {
-      showLoader();
-      const querySnapshot = await getDocs(collection(db, "Buildings")); // ✅ Firestore
-      ccurrentData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      updateListView();
+        showLoader(); // هنا قبل بدء العملية
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.getAll();
+        
+        const data = await new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        
+        currentData = data;
+        updateListView();
     } catch (error) {
-      Swal.fire('خطأ!', 'فشل تحميل البيانات: ' + error.message, 'error');
+        alert('فشل تحميل البيانات: ' + error.message);
     } finally {
-      hideLoader();
+        hideLoader(); // هنا بعد الانتهاء من جميع العمليات
     }
-  }
+}
+
+async function loadPaginatedData(page = 1, pageSize = 10) {
+    const transaction = db.transaction([STORE_NAME], 'readonly');
+    const store = transaction.objectStore(STORE_NAME);
+    const request = store.openCursor();
+    const results = [];
+    let counter = 0;
+
+    await new Promise((resolve) => {
+        request.onsuccess = (event) => {
+            const cursor = event.target.result;
+            if (cursor && counter < (page * pageSize)) {
+                if (counter >= ((page - 1) * pageSize)) {
+                    results.push(cursor.value);
+                }
+                counter++;
+                cursor.continue();
+            } else {
+                resolve();
+            }
+        };
+    });
+
+    currentData = results;
+    updateListView();
+}
 
 /*****************************
  *      إدارة المصادقة      *
  *****************************/
 async function login() {
     try {
-        showLoader();
-        const username = document.getElementById("username").value;
-        const password = document.getElementById("password").value;
+        showLoader(); // قبل التحقق من البيانات
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
         
-        // 1. التحقق من إدخال البيانات
-        if (!username || !password) {
-            Swal.fire('خطأ!', 'يرجى إدخال اسم المستخدم وكلمة المرور', 'error');
-            return;
+        // تشفير كلمة المرور باستخدام SHA-256
+        const hashedPassword = CryptoJS.SHA256(password).toString();
+    
+        // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
+        const validUsers = {
+            admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
+        };
+    
+        // التحقق من صحة البيانات
+        if (validUsers[username] === hashedPassword) {
+            sessionStorage.setItem('authToken', 'generated_token_here');
+            location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
+        } else {
+            alert('بيانات الدخول غير صحيحة!');
         }
-
-        // 2. تسجيل الدخول باستخدام Firebase Auth
-        const email = `${username}@estate.com`; // بناء البريد الإلكتروني
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // 3. حفظ التوكن في sessionStorage (اختياري)
-        const token = await user.getIdToken();
-        sessionStorage.setItem('authToken', token);
-
-        // 4. تحميل البيانات وإظهار لوحة التحكم
-        await loadAllData();
-        document.getElementById("loginContainer").style.display = 'none';
-        document.getElementById("dashboard").style.display = 'block';
+        if (validUsers[username] === hashedPassword) { // ✅ استخدام الشرط مباشرة
+            sessionStorage.setItem('authToken', 'generated_token_here');
+            location.reload();
+        }
     } catch (error) {
-        Swal.fire('خطأ!', `فشل تسجيل الدخول: ${error.message}`, 'error');
+        alert('فشل التسجيل: ' + error.message);
     } finally {
-        hideLoader();
+        hideLoader(); // بعد اكتمال العملية
     }
 }
 
-
+// إضافة دالة تسجيل الخروج (اختياري)
 function logout() {
-    // 1. مسح التوكن وجميع البيانات المؤقتة
-    sessionStorage.clear(); // ✅ تصحيح الخطأ الإملائي
-    
-    // 2. إعادة توجيه إلى صفحة الدخول
-    location.href = 'index.html';
+    sessionStorage.clear(); // مسح جميع البيانات المؤقتة
+    location.href = 'index.html'; // إعادة التوجيه
 }
 
 /*****************************
  *      حذف سجل      *
  *****************************/
 async function deleteEntry(id) {
-    const result = await Swal.fire({     
-        title: 'هل أنت متأكد؟',
-        text: "لا يمكنك التراجع عن هذا الإجراء!",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'نعم، احذف!',
-        cancelButtonText: 'إلغاء'
-    });
-  
-    if (!result.isConfirmed) return;
-  
+    if (!confirm('هل أنت متأكد؟')) return;
+    
     try {
-        showLoader();
-        // حذف المستند من Firestore باستخدام الـ ID
-        await deleteDoc(doc(db, "buildings", id));
+        showLoader(); // هنا قبل الحذف
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        
+        await new Promise((resolve, reject) => {
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+        
         await loadAllData(); // إعادة تحميل البيانات
-        Swal.fire('تم الحذف!', '', 'success'); // ✅ تصحيح الرسالة
+        clearForm();
     } catch (error) {
-        Swal.fire('خطأ!', 'فشل الحذف: ' + error.message, 'error'); // ✅ تصحيح الرسالة
+        alert('فشل الحذف: ' + error.message);
     } finally {
-        hideLoader();
+        hideLoader(); // هنا بعد الانتهاء
     }
 }
+
+/*****************************
+ *  إرسال البيانات إلى Google Sheet  *
+ *****************************/
+//async function saveToGoogleSheet(data) {
+//    const url = 'https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
+//    try {
+//        const response = await fetch(url, {
+//            method: 'POST',
+//            body: JSON.stringify(data),
+//            headers: { 
+//                'Content-Type': 'application/json'
+//            },
+//            mode: 'no-cors' // إضافة هذه السطر لتجاوز أخطاء CORS
+//        });
+//        if (!response.ok) {
+//            throw new Error('فشل الإرسال: ' + response.status);
+//        }
+//        return true;
+//    } catch (error) {
+//        console.error('خطأ في الاتصال:', error);
+//        throw error;
+//    }
+//}
 
 /*****************************
  *   إدارة العمليات (إضافة/تعديل)   *
  *****************************/
 async function handleData() {
+    // التحقق من صحة النموذج أولاً
     if (!validateForm()) return;
-  
+    
     try {
-      showLoader();
-      const data = {
-        building: currentBuilding,
-        totalBill: document.getElementById('totalBill').value,
-        reading: document.getElementById('reading').value,
-        valueSAR: document.getElementById('valueSAR').value,
-        fromDate: document.getElementById('fromDate').value,
-        toDate: document.getElementById('toDate').value,
-        paymentAmount: document.getElementById('paymentAmount').value,
-        combo: document.getElementById('comboBox').value
-      };
-  
-      if (isEditMode) {
-        // تحديث البيانات في Firebase
-        await updateDoc(doc(db, "Buildings", currentData[editIndex].id), data);
-        Swal.fire('نجاح!', 'تم التعديل', 'success');
-      } else {
-        // إضافة جديدة إلى Firebase
-        await addDoc(collection(db, "Buildings"), data);
-        Swal.fire('نجاح!', 'تمت الإضافة', 'success');
-      }
-  
-      await loadAllData();
+        // إظهار مؤشر التحميل
+        showLoader();
+        //const URL='https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
+        // تجميع بيانات النموذج
+        const data = {
+            building: currentBuilding,
+            totalBill: document.getElementById('totalBill').value,
+            reading: document.getElementById('reading').value,
+            valueSAR: document.getElementById('valueSAR').value,
+            fromDate: document.getElementById('fromDate').value,
+            toDate: document.getElementById('toDate').value,
+            paymentAmount: document.getElementById('paymentAmount').value,
+            combo: document.getElementById('comboBox').value
+        };
+
+        // بدء معاملة قاعدة البيانات
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+
+        // تحديد نوع العملية (تعديل/إضافة)
+        if (isEditMode && currentData[editIndex]?.id) {
+            data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
+            await store.put(data); // انتظار اكتمال التعديل
+            alert('✅ تم التعديل بنجاح');
+        } else {
+            await store.add(data); // انتظار اكتمال الإضافة
+            alert('✅ تمت الإضافة بنجاح');
+        }
+
+        // إعادة تحميل البيانات وتحديث الواجهة
+        await loadAllData();
+        //await saveToGoogleSheet(data);
     } catch (error) {
-      Swal.fire('خطأ!', 'فشلت العملية: ' + error.message, 'error');
+        // معالجة الأخطاء
+        console.error('فشلت العملية:', error);
+        alert('حدث خطأ أثناء الحفظ: ' + error.message);
     } finally {
-      hideLoader();
-      clearForm();
-      isEditMode = false;
+        // إخفاء مؤشر التحميل في جميع الحالات
+        hideLoader();
+        clearForm();
+        isEditMode = false;
+        editIndex = -1;
     }
-  }
+}
 
 function showForm(building) {
     currentBuilding = building;
@@ -233,24 +321,6 @@ function populateComboBox(building) {
     }
 }
 
-function exportToExcel() {
-    const data = currentData.map(item => ({
-        "اسم العمارة": item.building,
-        "المبلغ الكلي": item.totalBill,
-        "القراءة": item.reading,
-        "القيمة بالريال": item.valueSAR,
-        "التاريخ من": item.fromDate,
-        "التاريخ إلى": item.toDate,
-        "مبلغ السداد": item.paymentAmount,
-        "العداد التجاري": item.combo
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "البيانات");
-    XLSX.writeFile(wb, "بيانات_العقارات.xlsx");
-}
-
 /*****************************
  *      البحث في البيانات      *
  *****************************/
@@ -265,23 +335,36 @@ document.querySelector('.search-box').addEventListener('input', (e) => {
 
 async function searchData(searchTerm) {
     try {
-      showLoader();
-      const querySnapshot = await getDocs(collection(db, "buildings"));
-      const allData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      const results = allData.filter(item =>
-        Object.values(item).some(value =>
-          String(value).toLowerCase().includes(searchTerm.toLowerCase())
-));
-
-      currentData = results;
-      updateListView();
+        showLoader(); // هنا قبل البدء
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const index = store.index('building'); // ✅ استخدام الفهرس
+        const results = [];
+        
+        await new Promise((resolve) => {
+            const request = index.openCursor();
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    const item = cursor.value;
+                    // البحث في جميع الحقول
+                    const match = Object.values(item).some(value => 
+                        String(value).toLowerCase().includes(searchTerm.toLowerCase())
+                    );
+                    if (match) results.push(item);
+                    cursor.continue();
+                } else {
+                    resolve();
+                }
+            };
+        });
+        
+        currentData = results;
+        updateListView();
     } finally {
-      hideLoader();
+        hideLoader(); // هنا في النهاية
     }
-  }
+}
 
 function editEntry(index) {
     isEditMode = true;
@@ -377,11 +460,6 @@ window.onbeforeunload = function() {
 /*****************************
  *      وظائف مساعدة      *
  *****************************/
-function updateToDateMin() {
-    const fromDate = document.getElementById('fromDate').value;
-    document.getElementById('toDate').min = fromDate;
-}
-
 function updateListView() {
     const listContent = document.getElementById('listContent');
     listContent.innerHTML = '';
