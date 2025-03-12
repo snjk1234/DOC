@@ -157,7 +157,7 @@ button {
 
 button:hover {
     background: #3898ff;
-    transform: translateX(5px);
+    transform: scale(1.05);
 }
 button:active{
     background: #0050a5;
@@ -181,6 +181,15 @@ button:disabled {
     box-shadow: 0 4px 15px rgba(255, 255, 255, 0.849);
     background: rgba(0, 0, 0, 0.062) !important; /* شفافية 85% */
     backdrop-filter: blur(5px); /* تأثير تمويه */
+
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.form-container.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .input-group {
@@ -229,7 +238,7 @@ input, select {
 
 .input-group:hover{
     background: rgba(255, 255, 255, 0.1);
-    transform: translateX(10px);
+    transform: scale(1.03);
 }
 
 .list-item:hover {

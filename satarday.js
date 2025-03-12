@@ -65,7 +65,11 @@ const comboBoxData = {
     'عمارة المنارات 30059069267': ['يوجد عداد خدمات لحاله', 'عدد 4 شقق ب4 عدادات'],
     'عمارة السيل 30059012783': ['شقة 4 مع الخدمات بدون عداد'],
     'عمارة المكتب القديم 10074768485': ['5 محلات تجارية بعدادات', 'محل رقم 6 غير مؤجر', 'البدروم عدد3 اتفاق بينهم', 'شقة رقم 3 عداد تجاري+خدمات'],
-    'عمارة التجارية 30059069178': []
+    'عمارة التجارية 30059069178': ['العمارة التجارية 30059069178'],
+
+    'الاستراحة1': ['سلطان','عادل الزهراني','الافغانية','سعد رضا','المصري','عبد المحسن','ابوريان','الحدادين','استراحة المسبح',],
+    'الاستراحة2': ['الاستراحة2 ']
+
 };
 
 /*****************************
@@ -203,10 +207,10 @@ function logout() {
  *      حذف سجل      *
  *****************************/
 async function deleteEntry(id) {
-    if (!confirm('هل أنت متأكد؟')) return;
+    if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
     
     try {
-        showLoader(); // هنا قبل الحذف
+        showLoader();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
         
@@ -216,38 +220,39 @@ async function deleteEntry(id) {
             request.onerror = () => reject(request.error);
         });
         
-        await loadAllData(); // إعادة تحميل البيانات
+        await loadPaginatedData(currentPage); // إعادة تحميل البيانات بعد الحذف
         clearForm();
+        alert('✅ تم الحذف بنجاح'); // إشعار بنجاح العملية
     } catch (error) {
-        alert('فشل الحذف: ' + error.message);
+        alert('❌ فشل الحذف: ' + error.message);
     } finally {
-        hideLoader(); // هنا بعد الانتهاء
+        hideLoader();
     }
 }
 
 /*****************************
  *  إرسال البيانات إلى Google Sheet  *
  *****************************/
-//async function saveToGoogleSheet(data) {
-//    const url = 'https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
-//    try {
-//        const response = await fetch(url, {
-//            method: 'POST',
-//            body: JSON.stringify(data),
-//            headers: { 
-//                'Content-Type': 'application/json'
-//            },
-//            mode: 'no-cors' // إضافة هذه السطر لتجاوز أخطاء CORS
-//        });
-//        if (!response.ok) {
-//            throw new Error('فشل الإرسال: ' + response.status);
-//        }
-//        return true;
-//    } catch (error) {
-//        console.error('خطأ في الاتصال:', error);
-//        throw error;
-//    }
-//}
+async function saveToGoogleSheet(data) {
+    const url = 'https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: { 
+                'Content-Type': 'application/json'
+            },
+            mode: 'no-cors' // إضافة هذه السطر لتجاوز أخطاء CORS
+        });
+        if (!response.ok) {
+            throw new Error('فشل الإرسال: ' + response.status);
+        }
+        return true;
+    } catch (error) {
+        console.error('خطأ في الاتصال:', error);
+        throw error;
+    }
+}
 
 /*****************************
  *   إدارة العمليات (إضافة/تعديل)   *
@@ -259,7 +264,7 @@ async function handleData() {
     try {
         // إظهار مؤشر التحميل
         showLoader();
-        //const URL='https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
+        const URL='https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
         // تجميع بيانات النموذج
         const data = {
             building: currentBuilding,
@@ -288,7 +293,7 @@ async function handleData() {
 
         // إعادة تحميل البيانات وتحديث الواجهة
         await loadAllData();
-        //await saveToGoogleSheet(data);
+        await saveToGoogleSheet(data);
     } catch (error) {
         // معالجة الأخطاء
         console.error('فشلت العملية:', error);
@@ -488,4 +493,50 @@ function showLoading() {
 
 function hideLoading() {
     document.getElementById('loading').style.display = 'none';
+}
+
+function showForm(building) {
+    currentBuilding = building;
+    document.getElementById('buildingTitle').textContent = building;
+    const formContainer = document.getElementById('formContainer');
+    formContainer.classList.add('show'); // إظهار النموذج بتأثير
+    formContainer.style.display = 'block';
+    populateComboBox(building);
+}
+
+function clearForm() {
+    const formContainer = document.getElementById('formContainer');
+    formContainer.classList.remove('show'); // إخفاء النموذج بتأثير
+    setTimeout(() => {
+        formContainer.style.display = 'none';
+    }, 300); // الانتظار حتى تنتهي الرسوم المتحركة
+}
+
+
+
+function exportToExcel() {
+    const data = currentData;
+    const headers = ["اسم العمارة", "المبلغ الكلي", "القراءة", "القيمة بالريال", "التاريخ من", "التاريخ إلى", "مبلغ السداد", "العداد التجاري"];
+    const rows = data.map(item => [
+        item.building,
+        item.totalBill,
+        item.reading,
+        item.valueSAR,
+        item.fromDate,
+        item.toDate,
+        item.paymentAmount,
+        item.combo
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+        + headers.join(",") + "\n" 
+        + rows.map(row => row.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "عقارات.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
