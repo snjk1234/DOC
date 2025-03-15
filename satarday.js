@@ -136,7 +136,10 @@ async function loadAllData() {
         
         currentData = data;
         updateListView();
-        
+        // تحديث المبالغ بجانب الأزرار
+        data.forEach(item => {
+            updateTotalBillDisplay(item.building, item.totalBill);
+        });
     } catch (error) {
         alert('فشل تحميل البيانات: ' + error.message);
     } finally {
@@ -236,9 +239,17 @@ async function deleteEntry(id) {
                 reject(request.error);
             };
         });
+        // البحث عن السجل المحذوف في مصفوفة currentData
+        const deletedEntry = currentData.find(entry => entry.id === id);
+        if (deletedEntry) {
+            // تحديث عرض المبلغ الكلي بجانب الزر
+            updateTotalBillDisplay(deletedEntry.building, ''); // إفراغ المبلغ بعد الحذف
 
-        // إعادة تحميل البيانات بعد الحذف
-        await loadAllData();
+            // إزالة السجل المحذوف من مصفوفة currentData
+            currentData = currentData.filter(entry => entry.id !== id);
+            updateListView(); // تحديث الواجهة دون إعادة تحميل الصفحة
+        }
+
         // إخفاء مؤشر التحميل
         clearForm();
         hideLoader();
@@ -251,6 +262,7 @@ async function deleteEntry(id) {
         // إظهار رسالة الخطأ
         alert('❌ فشل الحذف: ' + error.message);
     }
+
 }
 
 /*****************************
@@ -263,8 +275,6 @@ async function handleData() {
     try {
         // إظهار مؤشر التحميل
         showLoader();
-        //const URL='https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
-        // تجميع بيانات النموذج
         const data = {
             building: currentBuilding,
             totalBill: document.getElementById('totalBill').value,
@@ -289,10 +299,10 @@ async function handleData() {
             await store.add(data); // انتظار اكتمال الإضافة
             //alert('✅ تمت الإضافة بنجاح');
         }
-
+        // تحديث المبلغ الكلي بجانب الزر
+        updateTotalBillDisplay(currentBuilding, data.totalBill);
         // إعادة تحميل البيانات وتحديث الواجهة
         await loadAllData();
-       // await saveToGoogleSheet(data);
     } catch (error) {
         // معالجة الأخطاء
         console.error('فشلت العملية:', error);
@@ -530,4 +540,12 @@ function exportToExcel() {
 function goBack() {
     clearForm(); // إفراغ الحقول
     document.getElementById('formContainer').style.display = 'none'; // إخفاء النموذج
+}
+
+// دالة لتحديث عرض المبلغ الكلي بجانب الزر
+function updateTotalBillDisplay(building, totalBill) {
+    const totalBillElement = document.getElementById(`totalBill_${building}`);
+    if (totalBillElement) {
+        totalBillElement.textContent = `${totalBill}`; // عرض المبلغ بجانب الزر
+    }
 }

@@ -93,6 +93,7 @@ body:hover::after {
     background: rgba(255, 255, 255, 0.103) !important; /* شفافية 85% */
     backdrop-filter: blur(5px); /* تأثير تمويه */
 }
+
 button.btt {
 width: 100%;
 padding: 12px;
@@ -401,4 +402,13 @@ select#comboBox option:checked {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+.total-bill-display {
+    padding: 10px;
+    color: #850000;
+    border-radius: 25px;
+
+}
+.bttn{
+    display: inline-flex ;
 }
