@@ -94,35 +94,60 @@ body:hover::after {
     backdrop-filter: blur(5px); /* تأثير تمويه */
 }
 
-button.btt {
-width: 100%;
-padding: 12px;
-font-size: 20px;
-font-family: 'tajawal';
-border: none;
-border-radius: 8px;
-margin-top: 1rem;
-cursor: pointer;
-transition: all 0.3s;
-background: rgba(0, 0, 0, 0.253) !important; /* شفافية 85% */
-backdrop-filter: blur(5px); /* تأثير تمويه */
-}
-
-button.btt:active{
-    background: rgba(0, 0, 0, 0.363) !important; /* شفافية 85% */
-}
-
 button {
-    padding: 15px;
-    background: #017cff;
+    background-color: #017bfdda;
+    padding: 10px 15px;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    transition: 0.3s;
-    font-size: 18px;
     transition: all 0.3s ease-in-out;
+    font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+
 }
+
+button.btt {
+    width: 100%;
+    padding: 12px;
+    font-size: 20px;
+    font-family: 'tajawal';
+    border: none;
+    border-radius: 8px;
+    margin-top: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: rgba(0, 0, 0, 0.253) !important; /* شفافية 85% */
+    backdrop-filter: blur(5px); /* تأثير تمويه */
+    }
+    
+    button.btt:active{
+        background: rgba(0, 0, 0, 0.363) !important; /* شفافية 85% */
+    }
+
+button:hover {
+    background: #004ea1;
+    transform: scale(1.05);
+    opacity: 0.9; /* تقليل العتامة قليلاً */
+    transform: scale(1.02); /* تحريك الزر لأعلى قليلاً */
+}
+
+/* تنسيق الزر عند وجود المبلغ */
+button:hover .total-bill-display {
+
+    border-color: #218838; /* تغيير لون الإطار عند التحويم */
+}
+
+button:active{
+    background: #0050a5;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 
 .searchData{
     width: 30%;
@@ -156,19 +181,6 @@ button {
     z-index: 1000;
 }
 
-button:hover {
-    background: #3898ff;
-    transform: scale(1.05);
-}
-button:active{
-    background: #0050a5;
-}
-
-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
 #updateBtn {
     background: #ffc107 !important; /* لون مميز للتعديل */
 }
@@ -198,6 +210,14 @@ button:disabled {
     border: none;
     transition: all 0.3s ease-in-out;
     font-style: 'tajawal';
+    display: flex;
+    align-items: center;
+    gap: 10px; /* المسافة بين الحقل والزر */
+}
+
+.input-group:hover{
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.03);
 }
 
 .group-all{
@@ -236,13 +256,8 @@ input, select {
     backdrop-filter: blur(3px);
 }
 
-.input-group:hover{
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.03);
-}
-
 .list-item:hover {
-    background: rgba(0, 0, 0, 0.1) !important;
+    background: rgba(184, 184, 184, 0.384) !important;
     transform: translateX(10px);
 }
 select {
@@ -315,13 +330,21 @@ select#comboBox option:checked {
 }
 
 .data-table th {
-    background: rgba(212, 212, 212, 0.76);
-    color: rgb(2, 2, 2);
+    background-color: #28a745; /* لون خلفية عناوين الجدول */
+    color: white; /* لون النص الأبيض */
     font-weight: bold;
 }
 
+.data-table tr:nth-child(even) {
+    background-color: #f9f9f9; /* تظليل الصفوف الزوجية */
+}
+
+.data-table tr:nth-child(odd) {
+    background-color: #ffffff; /* تظليل الصفوف الفردية */
+}
+
 .data-table tr:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background-color: #f1f1f1; /* تظليل الصفوف عند التحويم */
     transform: scale(1.02);
     transition: all 0.3s;
 }
@@ -404,11 +427,76 @@ select#comboBox option:checked {
     100% { transform: rotate(360deg); }
 }
 .total-bill-display {
-    padding: 10px;
-    color: #850000;
-    border-radius: 25px;
-
+    
+    font-weight: bold; /* جعل النص عريض */
+    color: #28a745; /* لون النص الأخضر */
+    background-color: rgba(40, 167, 69, 0.1); /* خلفية شفافة */
+    padding: 5px 10px; /* إضافة مساحة داخلية */
+    border-radius: 12px; /* زوايا مدورة */
+    border: 1px solid #28a745; /* إطار أخضر */
+    font-size: x-small; /* حجم الخط */
+    transition: all 0.3s ease-in-out; /* تأثير انتقالي */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* ظل خفيف */
+    color: #ffffff; /* لون النص أبيض */
+    background-color: #28a745; /* خلفية خضراء */
+    border: none; /* إزالة الإطار */
+    cursor: pointer; /* تغيير شكل المؤشر إلى يد */
 }
+
+/* تأثير عند تحويم الماوس */
+.total-bill-display:hover {
+    transform: scale(1.05); /* تكبير بسيط */
+}
+
 .bttn{
     display: inline-flex ;
+}
+
+/* تنسيقات حقل الإدخال المعطل */
+input:disabled {
+    background-color: #f0f0f0; /* لون خلفية للحقل المعطل */
+    cursor: not-allowed; /* تغيير شكل المؤشر */
+}
+
+/* تنسيقات زر "إضافة" */
+.enable-input-btn {
+    padding: 10px 15px;
+    background-color: #28a745; /* لون أخضر */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.enable-input-btn:hover {
+    background-color: #218838; /* لون أخضر داكن عند التحويم */
+    transform: scale(1.05); /* تكبير الزر عند التحويم */
+}
+
+/* زر "إضافة" */
+.enable-input-btn {
+    background: linear-gradient(135deg, #28a745, #218838); /* تدرج لوني */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
+}
+
+/* تنسيقات مجموعة الإدخال */
+
+
+/* زر "حفظ أو تعديل" */
+button[onclick="handleData()"] {
+    background: linear-gradient(135deg, #017cff, #0056b3); /* تدرج لوني */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
+}
+
+/* زر "حذف" */
+.delete-btn {
+    background: linear-gradient(135deg, #dc3545, #c82333); /* تدرج لوني */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
+}
+
+/* زر "عرض الكل" */
+button[onclick="resetListView()"] {
+    background: linear-gradient(135deg, #ffc107, #e0a800); /* تدرج لوني */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
 }

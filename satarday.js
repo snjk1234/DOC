@@ -77,9 +77,6 @@ const comboBoxData = {
  *****************************/
 document.addEventListener('DOMContentLoaded', async () => {
     try {
-        // تهيئة قاعدة البيانات
-        
-        
         // التحقق من وجود توكن مصادقة
         if (sessionStorage.getItem('authToken')) {
             db = await initializeDatabase();
@@ -98,7 +95,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
-
+document.getElementById('enableTotalBill').addEventListener('click', function () {
+    const totalBillInput = document.getElementById('totalBill');
+    totalBillInput.disabled = false; // تمكين الحقل
+    totalBillInput.focus(); // وضع المؤشر داخل الحقل
+});
 
 /*****************************
  *      إدارة مؤشر التحميل      *
@@ -392,6 +393,7 @@ function editEntry(index) {
 function clearForm() {
     // إفراغ الحقول
     document.getElementById('totalBill').value = '';
+    document.getElementById('totalBill').disabled = true;
     document.getElementById('reading').value = '';
     document.getElementById('valueSAR').value = '';
     document.getElementById('fromDate').value = '';
@@ -496,6 +498,36 @@ function updateListView() {
     });
 }
 
+function filterByBuilding(building) {
+    // تصفية البيانات بناءً على اسم العمارة
+    const filteredData = currentData.filter(item => item.building === building);
+
+    // تحديث الواجهة بالبيانات المصفاة
+    updateFilteredListView(filteredData);
+}
+
+function updateFilteredListView(filteredData) {
+    const listContent = document.getElementById('listContent');
+    listContent.innerHTML = ''; // إفراغ القائمة الحالية
+
+    // عرض البيانات المصفاة
+    filteredData.forEach((data, index) => {
+        const row = document.createElement('tr');
+        row.className = 'list-item';
+        row.innerHTML = `
+            <td>${data.building}</td>
+            <td>${data.totalBill}</td>
+            <td>${data.reading}</td>
+            <td>${data.valueSAR}</td>
+            <td>${data.fromDate}</td>
+            <td>${data.toDate}</td>
+            <td>${data.paymentAmount}</td>
+            <td>${data.combo}</td>
+        `;
+        row.onclick = () => editEntry(index);
+        listContent.appendChild(row);
+    });
+}
 
 function showForm(building) {
     // تعيين العمارة الحالية وعنوان النموذج
@@ -546,6 +578,10 @@ function goBack() {
 function updateTotalBillDisplay(building, totalBill) {
     const totalBillElement = document.getElementById(`totalBill_${building}`);
     if (totalBillElement) {
-        totalBillElement.textContent = `${totalBill}`; // عرض المبلغ بجانب الزر
+        if (totalBill) {
+            totalBillElement.textContent = `${totalBill} ريال`; // عرض المبلغ
+        } else {
+            totalBillElement.textContent = ''; // إفراغ المبلغ إذا كان فارغًا
+        }
     }
 }
