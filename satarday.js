@@ -111,6 +111,13 @@ function hideLoader() {
     document.getElementById('loadingOverlay').style.display = 'none';
 }
 
+function showLoading() {
+    document.getElementById('loading').style.display = 'block';
+}
+
+function hideLoading() {
+    document.getElementById('loading').style.display = 'none';
+}
 // مثال على الاستخدام في دالة تحميل البيانات
 /*****************************
  *      تحميل جميع البيانات      *
@@ -129,6 +136,7 @@ async function loadAllData() {
         
         currentData = data;
         updateListView();
+        
     } catch (error) {
         alert('فشل تحميل البيانات: ' + error.message);
     } finally {
@@ -203,6 +211,7 @@ function logout() {
     location.href = 'index.html'; // إعادة التوجيه
 }
 
+
 /*****************************
  *      حذف سجل      *
  *****************************/
@@ -210,47 +219,37 @@ async function deleteEntry(id) {
     if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
     
     try {
-        showLoader();
+        showLoader(); // إظهار مؤشر التحميل
+
+        // بدء معاملة قاعدة البيانات
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        
-        await new Promise((resolve, reject) => {
-            const request = store.delete(id);
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-        
-        await loadPaginatedData(currentPage); // إعادة تحميل البيانات بعد الحذف
-        clearForm();
-        alert('✅ تم الحذف بنجاح'); // إشعار بنجاح العملية
-    } catch (error) {
-        alert('❌ فشل الحذف: ' + error.message);
-    } finally {
-        hideLoader();
-    }
-}
 
-/*****************************
- *  إرسال البيانات إلى Google Sheet  *
- *****************************/
-async function saveToGoogleSheet(data) {
-    const url = 'https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            body: JSON.stringify(data),
-            headers: { 
-                'Content-Type': 'application/json'
-            },
-            mode: 'no-cors' // إضافة هذه السطر لتجاوز أخطاء CORS
+        // حذف السجل باستخدام الـ ID
+        const request = store.delete(id);
+
+        await new Promise((resolve, reject) => {
+            request.onsuccess = () => {
+                resolve();
+            };
+            request.onerror = () => {
+                reject(request.error);
+            };
         });
-        if (!response.ok) {
-            throw new Error('فشل الإرسال: ' + response.status);
-        }
-        return true;
+
+        // إعادة تحميل البيانات بعد الحذف
+        await loadAllData();
+        // إخفاء مؤشر التحميل
+        clearForm();
+        hideLoader();
+        // إظهار رسالة نجاح
+       // alert('✅ تم الحذف بنجاح');
     } catch (error) {
-        console.error('خطأ في الاتصال:', error);
-        throw error;
+        // إخفاء مؤشر التحميل في حالة الخطأ
+        hideLoader();
+
+        // إظهار رسالة الخطأ
+        alert('❌ فشل الحذف: ' + error.message);
     }
 }
 
@@ -264,7 +263,7 @@ async function handleData() {
     try {
         // إظهار مؤشر التحميل
         showLoader();
-        const URL='https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
+        //const URL='https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec';
         // تجميع بيانات النموذج
         const data = {
             building: currentBuilding,
@@ -285,34 +284,28 @@ async function handleData() {
         if (isEditMode && currentData[editIndex]?.id) {
             data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
             await store.put(data); // انتظار اكتمال التعديل
-            alert('✅ تم التعديل بنجاح');
+            //alert('✅ تم التعديل بنجاح');
         } else {
             await store.add(data); // انتظار اكتمال الإضافة
-            alert('✅ تمت الإضافة بنجاح');
+            //alert('✅ تمت الإضافة بنجاح');
         }
 
         // إعادة تحميل البيانات وتحديث الواجهة
         await loadAllData();
-        await saveToGoogleSheet(data);
+       // await saveToGoogleSheet(data);
     } catch (error) {
         // معالجة الأخطاء
         console.error('فشلت العملية:', error);
         alert('حدث خطأ أثناء الحفظ: ' + error.message);
     } finally {
         // إخفاء مؤشر التحميل في جميع الحالات
-        hideLoader();
         clearForm();
+        hideLoader();
         isEditMode = false;
         editIndex = -1;
     }
 }
 
-function showForm(building) {
-    currentBuilding = building;
-    document.getElementById('buildingTitle').textContent = building;
-    document.getElementById('formContainer').style.display = 'block';
-    populateComboBox(building);
-}
 
 function populateComboBox(building) {
     const combo = document.getElementById('comboBox');
@@ -387,12 +380,18 @@ function editEntry(index) {
 }
 
 function clearForm() {
+    // إفراغ الحقول
     document.getElementById('totalBill').value = '';
     document.getElementById('reading').value = '';
     document.getElementById('valueSAR').value = '';
     document.getElementById('fromDate').value = '';
     document.getElementById('toDate').value = '';
     document.getElementById('paymentAmount').value = '';
+    document.getElementById('comboBox').value = ''; // إضافة هذا السطر إذا كنت تريد إفراغ القائمة المنسدلة أيضًا
+
+    // إعادة تعيين حالة التعديل
+    isEditMode = false;
+    editIndex = -1;
 }
 
 
@@ -487,32 +486,20 @@ function updateListView() {
     });
 }
 
-function showLoading() {
-    document.getElementById('loading').style.display = 'block';
-}
-
-function hideLoading() {
-    document.getElementById('loading').style.display = 'none';
-}
 
 function showForm(building) {
+    // تعيين العمارة الحالية وعنوان النموذج
     currentBuilding = building;
     document.getElementById('buildingTitle').textContent = building;
+
+    // إظهار النموذج بتأثير
     const formContainer = document.getElementById('formContainer');
-    formContainer.classList.add('show'); // إظهار النموذج بتأثير
-    formContainer.style.display = 'block';
+    formContainer.classList.add('show'); // إضافة تأثير (إذا كان مدعومًا)
+    formContainer.style.display = 'block'; // إظهار النموذج
+
+    // تعبئة القائمة المنسدلة (ComboBox)
     populateComboBox(building);
 }
-
-function clearForm() {
-    const formContainer = document.getElementById('formContainer');
-    formContainer.classList.remove('show'); // إخفاء النموذج بتأثير
-    setTimeout(() => {
-        formContainer.style.display = 'none';
-    }, 300); // الانتظار حتى تنتهي الرسوم المتحركة
-}
-
-
 
 function exportToExcel() {
     const data = currentData;
@@ -539,4 +526,8 @@ function exportToExcel() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+function goBack() {
+    clearForm(); // إفراغ الحقول
+    document.getElementById('formContainer').style.display = 'flex'; // إخفاء النموذج
 }

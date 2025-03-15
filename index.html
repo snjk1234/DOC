@@ -25,8 +25,7 @@
     
         <!-- لوحة التحكم -->
         <div class="dashboard" id="dashboard">
-            <img src="logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
-            <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
+            
             <div class="building-buttons">
                 <button onclick="showForm('العمارة الكبيرة 30058543307')">العمارة الكبيرة 30058543307</button>
                 <button onclick="showForm('عمارة سلطانة 10075126558')">عمارة سلطانة 10075126558</button>
@@ -40,6 +39,10 @@
             <div class="searchData">
                 <input type="search" placeholder="ابحث هنا" class="search-box">
                 <i class="fas fa-search search-icon"></i>
+            </div>
+            <div>
+                <img src="logo.jpg" class="header-logo" alt="Bakr Sabr Logo">
+                <button onclick="logout()" class="logout-btn">تسجيل الخروج</button>
             </div>
             <div class="group-all">
                 <!-- نموذج الإدخال -->
@@ -68,7 +71,7 @@
                     </div>
                     <div class="form-actions">
                         <button onclick="handleData()">حفظ او تعديل</button> <!-- زر موحد -->
-                        <button onclick="goBack()">رجوع</button>
+                        <button onclick="goBack()">اخفاء</button>
                         <button onclick="deleteEntry(currentData[editIndex]?.id)" class="delete-btn">حذف</button>
 
                     </div>
