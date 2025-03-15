@@ -529,5 +529,5 @@ function exportToExcel() {
 }
 function goBack() {
     clearForm(); // إفراغ الحقول
-    document.getElementById('formContainer').style.display = 'flex'; // إخفاء النموذج
+    document.getElementById('formContainer').style.display = 'none'; // إخفاء النموذج
 }
