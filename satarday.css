@@ -239,9 +239,9 @@ input, select {
     padding: 10px;
     overflow-y: auto;
     width: 100%; 
-    box-shadow: 0 4px 15px rgb(255, 255, 255);
+    box-shadow: 0 4px 15px rgb(92, 92, 92);
     border-radius: 12px;
-    background: rgba(0, 0, 0, 0.075) !important; /* شفافية 85% */
+    background: rgba(0, 0, 0, 0) !important; /* شفافية 85% */
     backdrop-filter: blur(5px); /* تأثير تمويه */
 }
 
@@ -249,7 +249,7 @@ input, select {
     padding: 10px;
     cursor: pointer;
     transition: 0.3s;
-    background: rgba(212, 212, 212, 0.76);
+    background: rgba(212, 212, 212, 0.13);
     font-family: 'tajawal';
     margin: 5px 0;
     border-radius: 8px;
@@ -258,7 +258,7 @@ input, select {
 
 .list-item:hover {
     background: rgba(184, 184, 184, 0.384) !important;
-    transform: translateX(10px);
+    transform: scale(1.01);
 }
 select {
     background: rgba(255, 255, 255, 0.1);
@@ -330,21 +330,20 @@ select#comboBox option:checked {
 }
 
 .data-table th {
-    background-color: #28a745; /* لون خلفية عناوين الجدول */
-    color: white; /* لون النص الأبيض */
+    color: rgb(17, 102, 128); /* لون النص الأبيض */
     font-weight: bold;
 }
 
 .data-table tr:nth-child(even) {
-    background-color: #f9f9f9; /* تظليل الصفوف الزوجية */
+    background-color: #f9f9f962; /* تظليل الصفوف الزوجية */ /* لون خلفية عناوين الجدول */
 }
 
 .data-table tr:nth-child(odd) {
-    background-color: #ffffff; /* تظليل الصفوف الفردية */
+    background-color: #ffffff1c; /* تظليل الصفوف الفردية */
 }
 
 .data-table tr:hover {
-    background-color: #f1f1f1; /* تظليل الصفوف عند التحويم */
+    background-color: #f1f1f1b7; /* تظليل الصفوف عند التحويم */
     transform: scale(1.02);
     transition: all 0.3s;
 }

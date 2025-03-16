@@ -476,6 +476,10 @@ window.onbeforeunload = function() {
 /*****************************
  *      وظائف مساعدة      *
  *****************************/
+function resetListView() {
+    updateListView(); // إعادة تعيين القائمة لعرض جميع البيانات
+}
+
 function updateListView() {
     const listContent = document.getElementById('listContent');
     listContent.innerHTML = '';
