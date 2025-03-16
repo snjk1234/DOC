@@ -95,20 +95,21 @@ body:hover::after {
 }
 
 button {
-    background-color: #017bfdda;
+    background: linear-gradient(135deg, #003cffbd,#131fc4b7); /* تدرج لوني */
     padding: 10px 15px;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.3s ease-in-out;
     font-size: 16px;
     display: inline-flex;
     align-items: center;
-    gap: 15px; /* المسافة بين الأيقونة والنص */
+    gap: 5px; /* المسافة بين الأيقونة والنص */
 }
 
 button.btt {
+    display: grid;
     width: 100%;
     padding: 12px;
     font-size: 20px;
@@ -118,7 +119,7 @@ button.btt {
     margin-top: 1rem;
     cursor: pointer;
     transition: all 0.3s;
-    background: rgba(0, 0, 0, 0.253) !important; /* شفافية 85% */
+    background: linear-gradient(135deg, #01fd3caf, #009420b2); /* تدرج لوني */
     backdrop-filter: blur(5px); /* تأثير تمويه */
     }
     
@@ -129,8 +130,13 @@ button.btt {
 button:hover {
     background: #004ea1;
     transform: scale(1.05);
-    opacity: 0.9; /* تقليل العتامة قليلاً */
+    
     transform: scale(1.02); /* تحريك الزر لأعلى قليلاً */
+}
+
+.btt:hover{
+    background: linear-gradient(135deg, #00a524bd,#01fd3cb7); /* تدرج لوني */
+    opacity: 0.9;
 }
 
 /* تنسيق الزر عند وجود المبلغ */
@@ -151,24 +157,34 @@ button:disabled {
 
 .searchData{
     width: 30%;
-    height: auto;
-    display: inline-flex;
+    height: 40px;
+    display: grid ;
     position: relative;
 
 }
 
 .search-box{
-    padding-right: 50px;
+    padding-right: 70px;
     font-size: large;
 }
 
+.header-logo{
+    border: 1px solid #b1ac94;
+    box-shadow: 0 0 15px 0 rgb(0, 0, 0) !important;
+    border-radius: 10px;
+}
+
 .search-icon {
-    padding: 15px;
+    padding: 5px;
     position: absolute;
     top: 50%;
     right: 10px; /* أو left: 10px حسب اتجاه اللغة */
     transform: translateY(-50%);
     size: 24px;
+    color: #000;
+    border:5px;
+    border-radius: 20px;
+    border-color: #000; 
   }
 
 .logout-btn {
@@ -176,9 +192,10 @@ button:disabled {
     top: 200px; /* تحت الشعار */
     left: 20px;
     padding: 15px 30px;
-    background: #ff010188 !important;
+    background: linear-gradient(135deg, #ff0000bd,#7e0000b7) /* تدرج لوني */ !important;
     font-size: 18px;
     z-index: 1000;
+    border-radius: 8px;
 }
 
 #updateBtn {
@@ -239,7 +256,7 @@ input, select {
     padding: 10px;
     overflow-y: auto;
     width: 100%; 
-    box-shadow: 0 4px 15px rgb(92, 92, 92);
+    box-shadow: 0 0 10px 5px rgb(255, 255, 255);
     border-radius: 12px;
     background: rgba(0, 0, 0, 0) !important; /* شفافية 85% */
     backdrop-filter: blur(5px); /* تأثير تمويه */
@@ -249,7 +266,7 @@ input, select {
     padding: 10px;
     cursor: pointer;
     transition: 0.3s;
-    background: rgba(212, 212, 212, 0.13);
+    background: rgba(212, 212, 212, 0.164);
     font-family: 'tajawal';
     margin: 5px 0;
     border-radius: 8px;
@@ -258,7 +275,7 @@ input, select {
 
 .list-item:hover {
     background: rgba(184, 184, 184, 0.384) !important;
-    transform: scale(1.01);
+    transform: translateX(10px);
 }
 select {
     background: rgba(255, 255, 255, 0.1);
@@ -330,20 +347,21 @@ select#comboBox option:checked {
 }
 
 .data-table th {
-    color: rgb(17, 102, 128); /* لون النص الأبيض */
+    background-color: #a8a8a86e; /* لون خلفية عناوين الجدول */
+    color: rgb(59, 59, 59); /* لون النص الأبيض */
     font-weight: bold;
 }
 
 .data-table tr:nth-child(even) {
-    background-color: #f9f9f962; /* تظليل الصفوف الزوجية */ /* لون خلفية عناوين الجدول */
+    background-color: #f9f9f9b4; /* تظليل الصفوف الزوجية */
 }
 
 .data-table tr:nth-child(odd) {
-    background-color: #ffffff1c; /* تظليل الصفوف الفردية */
+    background-color: #ffffff56; /* تظليل الصفوف الفردية */
 }
 
 .data-table tr:hover {
-    background-color: #f1f1f1b7; /* تظليل الصفوف عند التحويم */
+    background-color: #f1f1f1; /* تظليل الصفوف عند التحويم */
     transform: scale(1.02);
     transition: all 0.3s;
 }
@@ -358,7 +376,7 @@ select#comboBox option:checked {
     }
 }
 #saveBtn { background: #28a745; }
-#updateBtn { background: #ffc107; color: #000; }
+#updateBtn { background: #523d00; color: #000; }
 .delete-btn { background: #dc3545; 
 }
 
@@ -475,7 +493,7 @@ input:disabled {
 
 /* زر "إضافة" */
 .enable-input-btn {
-    background: linear-gradient(135deg, #28a745, #218838); /* تدرج لوني */
+    background: linear-gradient(135deg, #28a745, #005813); /* تدرج لوني */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
 }
 
@@ -484,18 +502,18 @@ input:disabled {
 
 /* زر "حفظ أو تعديل" */
 button[onclick="handleData()"] {
-    background: linear-gradient(135deg, #017cff, #0056b3); /* تدرج لوني */
+    background: linear-gradient(135deg, #017cff, #003a77); /* تدرج لوني */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
 }
 
 /* زر "حذف" */
 .delete-btn {
-    background: linear-gradient(135deg, #dc3545, #c82333); /* تدرج لوني */
+    background: linear-gradient(135deg, #dc3545, #7a000c); /* تدرج لوني */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
 }
 
 /* زر "عرض الكل" */
 button[onclick="resetListView()"] {
-    background: linear-gradient(135deg, #ffc107, #e0a800); /* تدرج لوني */
+    background: linear-gradient(135deg, #b68c0f, #7a5c00); /* تدرج لوني */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* ظل */
 }
