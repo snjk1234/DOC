@@ -2,11 +2,11 @@
  *         المتغيرات العامة         *
  *****************************/
 let currentBuilding = ''; // تخزين اسم العمارة المحددة
-let currentData = [];     // مصفوفة تخزن بيانات العقارات
 let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
 let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
 let db;                   // المرجع الرئيسي لقاعدة البيانات
-
+let allData = []; // جميع البيانات من قاعدة البيانات
+let currentData = []; // البيانات المعروضة بعد التصفية/البحث
 /*****************************
  *      ثوابت قاعدة البيانات      *
  *****************************/
@@ -134,12 +134,16 @@ async function loadAllData() {
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
         });
-        
-        currentData = data;
+        allData = data.map(item => ({ ...item, id: Number(item.id) })); // ⬅️ تحويل الـ ID إلى رقم
+        currentData = [...allData];
         updateListView();
         // تحديث المبالغ بجانب الأزرار
+        const totals = {};
         data.forEach(item => {
-            updateTotalBillDisplay(item.building, item.totalBill);
+            totals[item.building] = (totals[item.building] || 0) + parseFloat(item.totalBill || 0);
+        });
+        Object.entries(totals).forEach(([building, total]) => {
+            updateTotalBillDisplay(building, total);
         });
     } catch (error) {
         alert('فشل تحميل البيانات: ' + error.message);
@@ -198,10 +202,6 @@ async function login() {
         } else {
             alert('بيانات الدخول غير صحيحة!');
         }
-        if (validUsers[username] === hashedPassword) { // ✅ استخدام الشرط مباشرة
-            sessionStorage.setItem('authToken', 'generated_token_here');
-            location.reload();
-        }
     } catch (error) {
         alert('فشل التسجيل: ' + error.message);
     } finally {
@@ -220,35 +220,27 @@ function logout() {
  *      حذف سجل      *
  *****************************/
 async function deleteEntry(id) {
+    const idNumber = Number(id);
     if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
-    
     try {
-        showLoader(); // إظهار مؤشر التحميل
-
-        // بدء معاملة قاعدة البيانات
+        showLoader();
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
 
-        // حذف السجل باستخدام الـ ID
-        const request = store.delete(id);
-
+        const exists = allData.some(entry => entry.id === idNumber);
+        if (!exists) return alert('السجل غير موجود!');
+        const request = store.delete(idNumber);
         await new Promise((resolve, reject) => {
-            request.onsuccess = () => {
-                resolve();
-            };
-            request.onerror = () => {
-                reject(request.error);
-            };
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
         });
         // البحث عن السجل المحذوف في مصفوفة currentData
-        const deletedEntry = currentData.find(entry => entry.id === id);
+        const deletedEntry = allData.find(entry => entry.id === idNumber);
         if (deletedEntry) {
-            // تحديث عرض المبلغ الكلي بجانب الزر
-            updateTotalBillDisplay(deletedEntry.building, ''); // إفراغ المبلغ بعد الحذف
-
-            // إزالة السجل المحذوف من مصفوفة currentData
-            currentData = currentData.filter(entry => entry.id !== id);
-            updateListView(); // تحديث الواجهة دون إعادة تحميل الصفحة
+            allData = allData.filter(entry => entry.id !== idNumber);
+            currentData = currentData.filter(entry => entry.id !== idNumber);
+            updateListView();
+            updateTotalBillDisplay(deletedEntry.building); // ← التحديث هنا
         }
 
         // إخفاء مؤشر التحميل
@@ -262,10 +254,25 @@ async function deleteEntry(id) {
 
         // إظهار رسالة الخطأ
         alert('❌ فشل الحذف: ' + error.message);
+        console.error('Error Details:', error); // ⬅️ طباعة تفاصيل الخطأ
     }
 
 }
 
+
+function updateTotalBillDisplayByDeletedId(id) {
+    const deletedEntry = allData.find(entry => entry.id === id);
+    if (deletedEntry) {
+        const remainingTotal = allData
+            .filter(item => item.building === deletedEntry.building)
+            .reduce((sum, item) => sum + parseFloat(item.totalBill || 0), 0);
+        
+        const totalBillElement = document.getElementById(`totalBill_${deletedEntry.building}`);
+        if (totalBillElement) {
+            totalBillElement.textContent = `${remainingTotal.toFixed(2)} ريال`;
+        }
+    }
+}
 /*****************************
  *   إدارة العمليات (إضافة/تعديل)   *
  *****************************/
@@ -277,6 +284,7 @@ async function handleData() {
         // إظهار مؤشر التحميل
         showLoader();
         const data = {
+            
             building: currentBuilding,
             totalBill: document.getElementById('totalBill').value,
             reading: document.getElementById('reading').value,
@@ -286,24 +294,21 @@ async function handleData() {
             paymentAmount: document.getElementById('paymentAmount').value,
             combo: document.getElementById('comboBox').value
         };
-
+        if (isEditMode && editIndex !== -1) {
+            data.id = editIndex; // ⬅️ استخدام editIndex الذي يحتوي على الـ ID
+        }
         // بدء معاملة قاعدة البيانات
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
 
-        // تحديد نوع العملية (تعديل/إضافة)
-        if (isEditMode && currentData[editIndex]?.id) {
-            data.id = currentData[editIndex].id; // استخدام الـ ID الفعلي
-            await store.put(data); // انتظار اكتمال التعديل
-            //alert('✅ تم التعديل بنجاح');
-        } else {
-            await store.add(data); // انتظار اكتمال الإضافة
-            //alert('✅ تمت الإضافة بنجاح');
-        }
-        // تحديث المبلغ الكلي بجانب الزر
-        updateTotalBillDisplay(currentBuilding, data.totalBill);
+            if (isEditMode && data.id) { // استخدام الـ ID الموجود
+                await store.put(data);
+            } else {
+                await store.add(data);
+            }
         // إعادة تحميل البيانات وتحديث الواجهة
         await loadAllData();
+        updateTotalBillDisplay(currentBuilding);
     } catch (error) {
         // معالجة الأخطاء
         console.error('فشلت العملية:', error);
@@ -375,11 +380,10 @@ async function searchData(searchTerm) {
     }
 }
 
-function editEntry(index) {
-    isEditMode = true;
-    editIndex = index;
-    const data = currentData[index];
-    
+function editEntry(id) {
+
+    const data = allData.find(item => item.id === id); // ⬅️ البحث في allData
+    if (!data) return;
     showForm(data.building);
     document.getElementById('totalBill').value = data.totalBill;
     document.getElementById('reading').value = data.reading;
@@ -388,10 +392,14 @@ function editEntry(index) {
     document.getElementById('toDate').value = data.toDate;
     document.getElementById('paymentAmount').value = data.paymentAmount;
     document.getElementById('comboBox').value = data.combo;
+        // تحديث حالة التعديل
+        isEditMode = true;
+        editIndex = data.id; // ⬅️ استخدام الـ ID بدلاً من الفهرس
 }
 
 function clearForm() {
     // إفراغ الحقول
+    currentBuilding = '';
     document.getElementById('totalBill').value = '';
     document.getElementById('totalBill').disabled = true;
     document.getElementById('reading').value = '';
@@ -477,6 +485,7 @@ window.onbeforeunload = function() {
  *      وظائف مساعدة      *
  *****************************/
 function resetListView() {
+    currentData = [...allData];
     updateListView(); // إعادة تعيين القائمة لعرض جميع البيانات
 }
 
@@ -484,9 +493,10 @@ function updateListView() {
     const listContent = document.getElementById('listContent');
     listContent.innerHTML = '';
     
-    currentData.forEach((data, index) => {
+    currentData.forEach((data) => {
         const row = document.createElement('tr');
         row.className = 'list-item';
+        row.setAttribute('data-id', data.id);
         row.innerHTML = `
             <td>${data.building}</td>
             <td>${data.totalBill}</td>
@@ -496,18 +506,19 @@ function updateListView() {
             <td>${data.toDate}</td>
             <td>${data.paymentAmount}</td>
             <td>${data.combo}</td>
+                <td>
+        <button onclick="deleteEntry(this.closest('tr').getAttribute('data-id'))" class="delete-btn">
+            <i class="fas fa-trash"></i> حذف
+        </button>
+    </td>
         `;
-        row.onclick = () => editEntry(index);
+        row.addEventListener('click', () => {
+            const id = parseInt(row.getAttribute('data-id')); // ⬅️ استرجاع الـ ID
+            editEntry(id);
+        });
+        row.onclick = () => editEntry(data.id); // تمرير الـ ID بدلاً من الفهرس
         listContent.appendChild(row);
     });
-}
-
-function filterByBuilding(building) {
-    // تصفية البيانات بناءً على اسم العمارة
-    const filteredData = currentData.filter(item => item.building === building);
-
-    // تحديث الواجهة بالبيانات المصفاة
-    updateFilteredListView(filteredData);
 }
 
 function updateFilteredListView(filteredData) {
@@ -515,7 +526,7 @@ function updateFilteredListView(filteredData) {
     listContent.innerHTML = ''; // إفراغ القائمة الحالية
 
     // عرض البيانات المصفاة
-    filteredData.forEach((data, index) => {
+    filteredData.forEach((data) => {
         const row = document.createElement('tr');
         row.className = 'list-item';
         row.innerHTML = `
@@ -528,9 +539,15 @@ function updateFilteredListView(filteredData) {
             <td>${data.paymentAmount}</td>
             <td>${data.combo}</td>
         `;
-        row.onclick = () => editEntry(index);
         listContent.appendChild(row);
     });
+}
+
+function filterByBuilding(building) {
+    const filteredData = allData.filter(item => item.building === building);
+    currentData = filteredData;
+    updateListView();
+
 }
 
 function showForm(building) {
@@ -579,13 +596,15 @@ function goBack() {
 }
 
 // دالة لتحديث عرض المبلغ الكلي بجانب الزر
-function updateTotalBillDisplay(building, totalBill) {
+function updateTotalBillDisplay(building) {
+    // حساب المبلغ الإجمالي من البيانات الحالية
+    const total = allData
+        .filter(item => item.building === building)
+        .reduce((sum, item) => sum + parseFloat(item.totalBill || 0), 0);
+
+    // تحديث العرض بجانب الزر
     const totalBillElement = document.getElementById(`totalBill_${building}`);
     if (totalBillElement) {
-        if (totalBill) {
-            totalBillElement.textContent = `${totalBill} ريال`; // عرض المبلغ
-        } else {
-            totalBillElement.textContent = ''; // إفراغ المبلغ إذا كان فارغًا
-        }
+        totalBillElement.textContent = `${total.toFixed(2)} ريال`; // عرض المبلغ مع خانتين عشريتين
     }
 }

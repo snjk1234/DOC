@@ -4,11 +4,10 @@
     <meta charset="UTF-8">
     <title>نظام إدارة العقارات</title>
     <link rel="stylesheet" href="satarday.css">
-    <link rel="icon" href="logo.png" type="image/png">
+    <link rel="icon" href="logo.jpg" type="image/png">
     <!-- إضافة مكتبة التشفير -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://script.google.com/macros/s/AKfycbw_fzm7EDXmzdvvQnnImWKMZFOZd6nb9xe_Fk6U9Q3-NJur_PY7-IsR0bb0RacWyFJ68Q/exec"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -30,35 +29,35 @@
             <div class="building-buttons">
                 <button class="bttn" onclick="showForm('العمارة الكبيرة 30058543307')">
                     العمارة الكبيرة 30058543307
-                    <span id="totalBill_العمارة الكبيرة 30058543307" class="total-bill-display" onclick="filterByBuilding('العمارة الكبيرة 30058543307')"></span>
+                    <span id="totalBill_العمارة الكبيرة 30058543307" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('العمارة الكبيرة 30058543307')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('عمارة سلطانة 10075126558')">
                     عمارة سلطانة 10075126558 
-                    <span id="totalBill_عمارة سلطانة 10075126558" class="total-bill-display" onclick="filterByBuilding('عمارة سلطانة 10075126558')"></span>
+                    <span id="totalBill_عمارة سلطانة 10075126558" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('عمارة سلطانة 10075126558')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('عمارة المنارات 30059069267')">
                     عمارة المنارات 30059069267
-                    <span id="totalBill_عمارة المنارات 30059069267" class="total-bill-display" onclick="filterByBuilding('عمارة المنارات 30059069267')"></span>
+                    <span id="totalBill_عمارة المنارات 30059069267" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('عمارة المنارات 30059069267')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('عمارة السيل 30059012783')">
                     عمارة السيل 30059012783 
-                    <span id="totalBill_عمارة السيل 30059012783" class="total-bill-display" onclick="filterByBuilding('عمارة السيل 30059012783')"></span>
+                    <span id="totalBill_عمارة السيل 30059012783" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('عمارة السيل 30059012783')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('عمارة المكتب القديم 10074768485')">
                     عمارة المكتب القديم 10074768485 
-                    <span id="totalBill_عمارة المكتب القديم 10074768485" class="total-bill-display" onclick="filterByBuilding('عمارة المكتب القديم 10074768485')"></span>
+                    <span id="totalBill_عمارة المكتب القديم 10074768485" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('عمارة المكتب القديم 10074768485')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('عمارة التجارية 30059069178')">
                     عمارة التجارية 30059069178 
-                    <span id="totalBill_عمارة التجارية 30059069178" class="total-bill-display" onclick="filterByBuilding('عمارة التجارية 30059069178')"></span>
+                    <span id="totalBill_عمارة التجارية 30059069178" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('عمارة التجارية 30059069178')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('الاستراحة1')">
                     الاستراحة1 
-                    <span id="totalBill_الاستراحة1" class="total-bill-display" onclick="filterByBuilding('الاستراحة1')"></span>
+                    <span id="totalBill_الاستراحة1" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('الاستراحة1')"></span>
                 </button>
                 <button class="bttn" onclick="showForm('الاستراحة2')">
                     الاستراحة2 
-                    <span id="totalBill_الاستراحة2" class="total-bill-display" onclick="filterByBuilding('الاستراحة2')"></span>
+                    <span id="totalBill_الاستراحة2" class="total-bill-display" onclick="event.stopPropagation(); filterByBuilding('الاستراحة2')"></span>
                 </button>
             </div>
             <div class="searchData">
@@ -95,22 +94,11 @@
                     <div class="input-group">
                         <select id="comboBox"></select>
                     </div>
-                    <div class="form-actions">
-                        <!-- زر "إضافة" مع أيقونة -->
-                        <button id="enableTotalBill" class="enable-input-btn">
-                            <i class="fas fa-plus"></i> إضافة
-                        </button>
-                        
+                    <div class="form-actions">     
                         <!-- زر "حفظ أو تعديل" مع أيقونة -->
                         <button onclick="handleData()">
                             <i class="fas fa-save"></i> حفظ أو تعديل
                         </button>
-                        
-                        <!-- زر "حذف" مع أيقونة -->
-                        <button onclick="deleteEntry(currentData[editIndex]?.id)" class="delete-btn">
-                            <i class="fas fa-trash"></i> حذف
-                        </button>
-                        
                         <!-- زر "عرض الكل" مع أيقونة -->
                         <button onclick="resetListView()">
                             <i class="fas fa-list"></i> عرض الكل
