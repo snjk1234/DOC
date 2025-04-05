@@ -1,39 +1,63 @@
-/*****************************
- *         المتغيرات العامة         *
- *****************************/
-let currentBuilding = ''; // تخزين اسم العمارة المحددة
-let editIndex = -1;       // مؤشر لتحديد العنصر المراد تعديله
-let isEditMode = false;   // حالة تحديد إذا كان في وضع التعديل
-let db;                   // المرجع الرئيسي لقاعدة البيانات
-let allData = []; // جميع البيانات من قاعدة البيانات
-let currentData = []; // البيانات المعروضة بعد التصفية/البحث
-/*****************************
- *      ثوابت قاعدة البيانات      *
- *****************************/
-const DB_NAME = 'EstateDB';       // اسم قاعدة البيانات
-const STORE_NAME = 'Buildings';   // اسم مخزن البيانات
-const DB_VERSION = 1;             // إصدار قاعدة البيانات
+/******************************************************************************
+ * المتغيرات العامة                              *
+ * Global Variables                             *
+ ******************************************************************************/
+let selectedBuildingName = ''; // يخزن اسم العمارة المحددة حاليًا
+let editingEntryId = null; // معرف السجل الذي يتم تعديله حاليًا (null يعني لا يوجد تعديل)
+let isEditModeActive = false; // حالة لتحديد ما إذا كان وضع التعديل نشطًا
+let databaseInstance; // المرجع الرئيسي لقاعدة بيانات IndexedDB
+let allEntriesData = []; // مصفوفة لتخزين جميع السجلات من قاعدة البيانات
+let currentlyDisplayedData = []; // مصفوفة لتخزين البيانات المعروضة حاليًا (بعد التصفية/البحث)
 
-/*****************************
- *    تهيئة قاعدة البيانات     *
- *****************************/
+/******************************************************************************
+ * ثوابت قاعدة البيانات                            *
+ * Database Constants                            *
+ ******************************************************************************/
+const DATABASE_NAME = 'EstateDB'; // اسم قاعدة البيانات
+const OBJECT_STORE_NAME = 'Buildings'; // اسم مخزن الكائنات (الجدول)
+const DATABASE_VERSION = 1; // إصدار قاعدة البيانات
+
+/******************************************************************************
+ * بيانات القوائم المنسدلة                          *
+ * Dropdown Data                              *
+ ******************************************************************************/
+// بيانات القوائم المنسدلة لكل عمارة بناءً على اسمها
+const buildingDropdownOptions = {
+    'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
+    'عمارة سلطانة 10075126558': ['شقة رقم 10 عدد 1', 'خدمات +عمال ريان بدون'],
+    'عمارة المنارات 30059069267': ['يوجد عداد خدمات لحاله', 'عدد 4 شقق ب4 عدادات'],
+    'عمارة السيل 30059012783': ['شقة 4 مع الخدمات بدون عداد'],
+    'عمارة المكتب القديم 10074768485': ['5 محلات تجارية بعدادات', 'محل رقم 6 غير مؤجر', 'البدروم عدد3 اتفاق بينهم', 'شقة رقم 3 عداد تجاري+خدمات'],
+    'عمارة التجارية 30059069178': ['العمارة التجارية 30059069178'],
+    'الاستراحة1': ['سلطان', 'عادل الزهراني', 'الافغانية', 'سعد رضا', 'المصري', 'عبد المحسن', 'ابوريان', 'الحدادين', 'استراحة المسبح'],
+    'الاستراحة2': ['الاستراحة2 ']
+};
+
+/******************************************************************************
+ * تهيئة قاعدة البيانات                             *
+ * Initialize Database                             *
+ ******************************************************************************/
+/**
+ * تهيئة وفتح اتصال بقاعدة بيانات IndexedDB.
+ * Initializes and opens a connection to the IndexedDB database.
+ * @returns {Promise<IDBDatabase>} وعد يتم حله مع كائن قاعدة البيانات عند النجاح.
+ */
 function initializeDatabase() {
     return new Promise((resolve, reject) => {
-        // فتح أو إنشاء قاعدة البيانات
-        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        // طلب فتح قاعدة البيانات بالإصدار المحدد
+        const openRequest = indexedDB.open(DATABASE_NAME, DATABASE_VERSION);
 
-        // معالجة تحديث الهيكل
-        request.onupgradeneeded = (event) => {
+        // يتم استدعاؤه عند الحاجة لترقية بنية قاعدة البيانات (إنشاء مخزن الكائنات والفهارس)
+        openRequest.onupgradeneeded = (event) => {
             const db = event.target.result;
-            
-            // إنشاء مخزن البيانات إذا لم يكن موجوداً
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, {
-                    keyPath: 'id',
-                    autoIncrement: true
+            // التحقق مما إذا كان مخزن الكائنات موجودًا بالفعل
+            if (!db.objectStoreNames.contains(OBJECT_STORE_NAME)) {
+                // إنشاء مخزن الكائنات مع مفتاح أساسي يتزايد تلقائيًا
+                const store = db.createObjectStore(OBJECT_STORE_NAME, {
+                    keyPath: 'id', // تحديد 'id' كمفتاح أساسي
+                    autoIncrement: true // تفعيل التزايد التلقائي للمفتاح
                 });
-                
-                // إنشاء فهارس لجميع الحقول للبحث السريع
+                // إنشاء فهارس للحقول لتسريع عمليات البحث والتصفية
                 store.createIndex('building', 'building', { unique: false });
                 store.createIndex('totalBill', 'totalBill', { unique: false });
                 store.createIndex('reading', 'reading', { unique: false });
@@ -42,250 +66,264 @@ function initializeDatabase() {
                 store.createIndex('toDate', 'toDate', { unique: false });
                 store.createIndex('paymentAmount', 'paymentAmount', { unique: false });
                 store.createIndex('combo', 'combo', { unique: false });
+                console.log('تم إنشاء مخزن الكائنات والفهارس بنجاح.');
             }
         };
 
-        // عند نجاح فتح قاعدة البيانات
-        request.onsuccess = (event) => {
-            db = event.target.result;
-            resolve(db); // إرجاع المرجع لقاعدة البيانات
+        // يتم استدعاؤه عند نجاح فتح قاعدة البيانات
+        openRequest.onsuccess = (event) => {
+            databaseInstance = event.target.result; // تخزين مرجع قاعدة البيانات
+            console.log('تم الاتصال بقاعدة البيانات بنجاح.');
+            resolve(databaseInstance); // حل الوعد مع كائن قاعدة البيانات
         };
 
-        // معالجة الأخطاء
-        request.onerror = (event) => {
-            reject(event.target.error);
+        // يتم استدعاؤه عند حدوث خطأ أثناء فتح قاعدة البيانات
+        openRequest.onerror = (event) => {
+            console.error('خطأ في فتح قاعدة البيانات:', event.target.error);
+            reject(event.target.error); // رفض الوعد مع الخطأ
         };
     });
 }
 
-// بيانات القوائم المنسدلة لكل عمارة
-const comboBoxData = {
-    'العمارة الكبيرة 30058543307': ['البدروم عدد2', 'شقة 4 عدد1', 'شقق 22/23/ عليها2', 'الخدمات بدون عداد'],
-    'عمارة سلطانة 10075126558': ['شقة رقم 10 عدد 1','خدمات +عمال ريان بدون'],
-    'عمارة المنارات 30059069267': ['يوجد عداد خدمات لحاله', 'عدد 4 شقق ب4 عدادات'],
-    'عمارة السيل 30059012783': ['شقة 4 مع الخدمات بدون عداد'],
-    'عمارة المكتب القديم 10074768485': ['5 محلات تجارية بعدادات', 'محل رقم 6 غير مؤجر', 'البدروم عدد3 اتفاق بينهم', 'شقة رقم 3 عداد تجاري+خدمات'],
-    'عمارة التجارية 30059069178': ['العمارة التجارية 30059069178'],
+/******************************************************************************
+ * إدارة واجهة المستخدم (UI)                       *
+ * UI Management                              *
+ ******************************************************************************/
 
-    'الاستراحة1': ['سلطان','عادل الزهراني','الافغانية','سعد رضا','المصري','عبد المحسن','ابوريان','الحدادين','استراحة المسبح',],
-    'الاستراحة2': ['الاستراحة2 ']
-
-};
-
-/*****************************
- *     أحداث تحميل الصفحة     *
- *****************************/
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        // التحقق من وجود توكن مصادقة
-        if (sessionStorage.getItem('authToken')) {
-            db = await initializeDatabase();
-            // إخفاء واجهة الدخول وإظهار لوحة التحكم
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('dashboard').style.display = 'block';
-
-            // تحميل البيانات وعرضها
-            await loadAllData();
-        }
-    } catch (error) {
-        console.error('فشل تهيئة التطبيق:', error);
-        alert('تعذر الاتصال بالنظام!');
-    } finally {
-        hideLoader(); // إخفاء المؤشر في جميع الحالات
-    }
-});
-
-document.getElementById('enableTotalBill').addEventListener('click', function () {
-    const totalBillInput = document.getElementById('totalBill');
-    totalBillInput.disabled = false; // تمكين الحقل
-    totalBillInput.focus(); // وضع المؤشر داخل الحقل
-});
-
-/*****************************
- *      إدارة مؤشر التحميل      *
- *****************************/
-function showLoader() {
+/**
+ * إظهار مؤشر التحميل العام.
+ * Shows the global loading indicator.
+ */
+function showGlobalLoader() {
     document.getElementById('loadingOverlay').style.display = 'flex';
 }
 
-function hideLoader() {
+/**
+ * إخفاء مؤشر التحميل العام.
+ * Hides the global loading indicator.
+ */
+function hideGlobalLoader() {
     document.getElementById('loadingOverlay').style.display = 'none';
 }
 
-function showLoading() {
-    document.getElementById('loading').style.display = 'block';
+/**
+ * إظهار نموذج الإدخال/التعديل لمبنى معين.
+ * Shows the input/edit form for a specific building.
+ * @param {string} buildingName - اسم العمارة المراد عرض نموذجها.
+ */
+function displayInputForm(buildingName) {
+    selectedBuildingName = buildingName; // تحديث اسم العمارة المحددة
+    document.getElementById('buildingTitle').textContent = buildingName; // تحديث عنوان النموذج
+
+    const formContainer = document.getElementById('formContainer');
+    formContainer.classList.add('show'); // إضافة كلاس لإظهار النموذج (يمكن استخدامه للتحريك)
+    formContainer.style.display = 'block'; // إظهار عنصر النموذج
+
+    populateBuildingDropdown(buildingName); // ملء القائمة المنسدلة بالخيارات المناسبة للعمارة
+    clearInputFormFields(); // مسح الحقول قبل عرض النموذج (خاصة إذا كان نموذجًا جديدًا)
+    document.getElementById('totalBill').disabled = true; // تعطيل حقل المبلغ الكلي مبدئيًا
 }
 
-function hideLoading() {
-    document.getElementById('loading').style.display = 'none';
+/**
+ * إخفاء نموذج الإدخال/التعديل.
+ * Hides the input/edit form.
+ */
+function hideInputForm() {
+    clearInputFormFields(); // مسح الحقول عند الإخفاء
+    document.getElementById('formContainer').style.display = 'none'; // إخفاء عنصر النموذج
+    document.getElementById('formContainer').classList.remove('show'); // إزالة كلاس الإظهار
+    resetEditState(); // إعادة تعيين حالة التعديل
 }
-// مثال على الاستخدام في دالة تحميل البيانات
-/*****************************
- *      تحميل جميع البيانات      *
- *****************************/
-async function loadAllData() {
+
+/**
+ * مسح جميع حقول نموذج الإدخال/التعديل.
+ * Clears all fields in the input/edit form.
+ */
+function clearInputFormFields() {
+    document.getElementById('totalBill').value = '';
+    document.getElementById('totalBill').disabled = true; // إعادة تعطيل حقل المبلغ الكلي
+    document.getElementById('reading').value = '';
+    document.getElementById('valueSAR').value = '';
+    document.getElementById('fromDate').value = '';
+    document.getElementById('toDate').value = '';
+    document.getElementById('paymentAmount').value = '';
+    document.getElementById('comboBox').value = ''; // إفراغ القائمة المنسدلة أيضًا
+}
+
+/**
+ * ملء القائمة المنسدلة (ComboBox) بالخيارات المناسبة للعمارة المحددة.
+ * Populates the dropdown (ComboBox) with options relevant to the selected building.
+ * @param {string} buildingName - اسم العمارة.
+ */
+function populateBuildingDropdown(buildingName) {
+    const comboBox = document.getElementById('comboBox');
+    comboBox.innerHTML = ''; // إفراغ الخيارات الحالية
+    // التحقق مما إذا كانت هناك خيارات محددة لهذه العمارة
+    if (buildingDropdownOptions[buildingName]) {
+        // إضافة كل خيار إلى القائمة المنسدلة
+        buildingDropdownOptions[buildingName].forEach(itemText => {
+            const option = document.createElement('option');
+            option.text = itemText;
+            option.value = itemText; // تعيين القيمة أيضًا
+            comboBox.add(option);
+        });
+    } else {
+        // إضافة خيار افتراضي إذا لم تكن هناك خيارات محددة
+        const defaultOption = document.createElement('option');
+        defaultOption.text = 'لا توجد خيارات متاحة';
+        defaultOption.value = '';
+        comboBox.add(defaultOption);
+    }
+}
+
+/**
+ * تحديث عرض القائمة (ListView) بالبيانات الحالية.
+ * Updates the list view with the current data.
+ */
+function updateListViewDisplay() {
+    const listContentBody = document.getElementById('listContent');
+    listContentBody.innerHTML = ''; // إفراغ محتوى القائمة الحالي
+
+    // التحقق مما إذا كانت هناك بيانات لعرضها
+    if (!currentlyDisplayedData || currentlyDisplayedData.length === 0) {
+        // عرض رسالة في حالة عدم وجود بيانات
+        const noDataRow = listContentBody.insertRow();
+        const noDataCell = noDataRow.insertCell();
+        noDataCell.colSpan = 9; // دمج الأعمدة لعرض الرسالة
+        noDataCell.textContent = 'لا توجد بيانات لعرضها.';
+        noDataCell.style.textAlign = 'center';
+        noDataCell.style.padding = '20px';
+        return;
+    }
+
+    // إنشاء صف لكل سجل في البيانات الحالية
+    currentlyDisplayedData.forEach((entryData) => {
+        const row = listContentBody.insertRow(); // إنشاء صف جديد في الجدول
+        row.className = 'list-item'; // إضافة كلاس للتنسيق
+        row.setAttribute('data-id', entryData.id); // تخزين معرف السجل في الصف للوصول إليه لاحقًا
+
+        // إضافة خلايا البيانات لكل عمود
+        row.insertCell().textContent = entryData.building || 'غير متوفر';
+        row.insertCell().textContent = entryData.totalBill || '0';
+        row.insertCell().textContent = entryData.reading || '0';
+        row.insertCell().textContent = entryData.valueSAR || '0';
+        row.insertCell().textContent = entryData.fromDate || 'غير محدد';
+        row.insertCell().textContent = entryData.toDate || 'غير محدد';
+        row.insertCell().textContent = entryData.paymentAmount || '0';
+        row.insertCell().textContent = entryData.combo || 'غير محدد';
+
+        // إضافة خلية لأزرار الإجراءات (حذف وتعديل)
+        const actionsCell = row.insertCell();
+        actionsCell.innerHTML = `
+            <button onclick="prepareEditEntry(${entryData.id})" class="edit-btn" title="تعديل السجل">
+                <i class="fas fa-edit"></i> تعديل
+            </button>
+            <button onclick="requestDeleteEntry(${entryData.id})" class="delete-btn" title="حذف السجل">
+                <i class="fas fa-trash"></i> حذف
+            </button>
+        `;
+
+        // إضافة مستمع حدث النقر على الصف (باستثناء أزرار الإجراءات) لعرض النموذج للتعديل
+        row.addEventListener('click', (event) => {
+            // منع تفعيل التعديل عند النقر على أزرار الحذف أو التعديل مباشرة
+            if (event.target.closest('.delete-btn') || event.target.closest('.edit-btn')) {
+                return;
+            }
+            prepareEditEntry(entryData.id);
+        });
+    });
+}
+
+
+/**
+ * تحديث عرض المبلغ الإجمالي بجانب زر العمارة المحدد.
+ * Updates the total bill display next to the specified building button.
+ * @param {string} buildingName - اسم العمارة.
+ */
+function updateTotalBillDisplayForBuilding(buildingName) {
+    // حساب المبلغ الإجمالي من جميع السجلات لهذه العمارة
+    const total = allEntriesData
+        .filter(item => item.building === buildingName) // تصفية السجلات حسب اسم العمارة
+        .reduce((sum, item) => sum + parseFloat(item.totalBill || 0), 0); // جمع المبالغ
+
+    // العثور على عنصر عرض المبلغ الخاص بالعمارة
+    const totalBillElement = document.getElementById(`totalBill_${buildingName}`);
+    if (totalBillElement) {
+        // تحديث النص لعرض المبلغ الإجمالي المنسق
+        totalBillElement.textContent = `${total.toFixed(2)} ريال`; // عرض المبلغ مع خانتين عشريتين
+    }
+}
+
+/**
+ * تحديث عرض المبالغ الإجمالية لجميع أزرار العمارات.
+ * Updates the total bill display for all building buttons.
+ */
+function updateAllBuildingTotalDisplays() {
+    // الحصول على قائمة بأسماء العمارات الفريدة من جميع السجلات
+    const uniqueBuildingNames = [...new Set(allEntriesData.map(item => item.building))];
+    // تحديث عرض المبلغ لكل عمارة
+    uniqueBuildingNames.forEach(buildingName => {
+        updateTotalBillDisplayForBuilding(buildingName);
+    });
+}
+
+/******************************************************************************
+ * عمليات قاعدة البيانات (CRUD)                         *
+ * Database Operations (CRUD)                       *
+ ******************************************************************************/
+
+/**
+ * تحميل جميع السجلات من قاعدة البيانات وتحديث الواجهة.
+ * Loads all entries from the database and updates the UI.
+ */
+async function loadAllEntries() {
     try {
-        showLoader(); // هنا قبل بدء العملية
-        const transaction = db.transaction([STORE_NAME], 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const request = store.getAll();
-        
+        showGlobalLoader(); // إظهار مؤشر التحميل قبل بدء العملية
+        if (!databaseInstance) {
+            throw new Error('قاعدة البيانات غير مهيأة.');
+        }
+        // بدء معاملة قراءة فقط
+        const transaction = databaseInstance.transaction([OBJECT_STORE_NAME], 'readonly');
+        const store = transaction.objectStore(OBJECT_STORE_NAME);
+        const getAllRequest = store.getAll(); // طلب جلب جميع السجلات
+
+        // انتظار نتيجة الطلب
         const data = await new Promise((resolve, reject) => {
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
+            getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+            getAllRequest.onerror = () => reject(getAllRequest.error);
         });
-        allData = data.map(item => ({ ...item, id: Number(item.id) })); // ⬅️ تحويل الـ ID إلى رقم
-        currentData = [...allData];
-        updateListView();
-        // تحديث المبالغ بجانب الأزرار
-        const totals = {};
-        data.forEach(item => {
-            totals[item.building] = (totals[item.building] || 0) + parseFloat(item.totalBill || 0);
-        });
-        Object.entries(totals).forEach(([building, total]) => {
-            updateTotalBillDisplay(building, total);
-        });
+
+        // تخزين البيانات وتحويل الـ ID إلى رقم لضمان التناسق
+        allEntriesData = data.map(item => ({ ...item, id: Number(item.id) }));
+        currentlyDisplayedData = [...allEntriesData]; // عرض جميع البيانات مبدئيًا
+
+        updateListViewDisplay(); // تحديث عرض القائمة
+        updateAllBuildingTotalDisplays(); // تحديث المبالغ الإجمالية بجانب الأزرار
+
+        console.log('تم تحميل جميع السجلات بنجاح.');
+
     } catch (error) {
+        console.error('فشل تحميل البيانات:', error);
         alert('فشل تحميل البيانات: ' + error.message);
     } finally {
-        hideLoader(); // هنا بعد الانتهاء من جميع العمليات
+        hideGlobalLoader(); // إخفاء مؤشر التحميل بعد انتهاء العملية (نجاح أو فشل)
     }
 }
 
-async function loadPaginatedData(page = 1, pageSize = 10) {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.openCursor();
-    const results = [];
-    let counter = 0;
+/**
+ * إضافة سجل جديد أو تعديل سجل موجود في قاعدة البيانات.
+ * Adds a new entry or updates an existing one in the database.
+ */
+async function saveOrUpdateEntry() {
+    // التحقق من صحة البيانات في النموذج أولاً
+    if (!validateInputForm()) return; // الخروج إذا كانت البيانات غير صالحة
 
-    await new Promise((resolve) => {
-        request.onsuccess = (event) => {
-            const cursor = event.target.result;
-            if (cursor && counter < (page * pageSize)) {
-                if (counter >= ((page - 1) * pageSize)) {
-                    results.push(cursor.value);
-                }
-                counter++;
-                cursor.continue();
-            } else {
-                resolve();
-            }
-        };
-    });
-
-    currentData = results;
-    updateListView();
-}
-
-/*****************************
- *      إدارة المصادقة      *
- *****************************/
-async function login() {
     try {
-        showLoader(); // قبل التحقق من البيانات
-        const username = document.getElementById('username').value;
-        const password = document.getElementById('password').value;
-        
-        // تشفير كلمة المرور باستخدام SHA-256
-        const hashedPassword = CryptoJS.SHA256(password).toString();
-    
-        // بيانات المستخدمين (لتغييرها في البيئة الإنتاجية)
-        const validUsers = {
-            admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3' // 123
-        };
-    
-        // التحقق من صحة البيانات
-        if (validUsers[username] === hashedPassword) {
-            sessionStorage.setItem('authToken', 'generated_token_here');
-            location.reload(); // إعادة تحميل الصفحة لتطبيق التغييرات
-        } else {
-            alert('بيانات الدخول غير صحيحة!');
-        }
-    } catch (error) {
-        alert('فشل التسجيل: ' + error.message);
-    } finally {
-        hideLoader(); // بعد اكتمال العملية
-    }
-}
+        showGlobalLoader(); // إظهار مؤشر التحميل
 
-// إضافة دالة تسجيل الخروج (اختياري)
-function logout() {
-    sessionStorage.clear(); // مسح جميع البيانات المؤقتة
-    location.href = 'index.html'; // إعادة التوجيه
-}
-
-
-/*****************************
- *      حذف سجل      *
- *****************************/
-async function deleteEntry(id) {
-    const idNumber = Number(id);
-    if (!confirm('هل أنت متأكد من حذف هذا السجل؟')) return;
-    try {
-        showLoader();
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-
-        const exists = allData.some(entry => entry.id === idNumber);
-        if (!exists) return alert('السجل غير موجود!');
-        const request = store.delete(idNumber);
-        await new Promise((resolve, reject) => {
-            request.onsuccess = () => resolve();
-            request.onerror = () => reject(request.error);
-        });
-        // البحث عن السجل المحذوف في مصفوفة currentData
-        const deletedEntry = allData.find(entry => entry.id === idNumber);
-        if (deletedEntry) {
-            allData = allData.filter(entry => entry.id !== idNumber);
-            currentData = currentData.filter(entry => entry.id !== idNumber);
-            updateListView();
-            updateTotalBillDisplay(deletedEntry.building); // ← التحديث هنا
-        }
-
-        // إخفاء مؤشر التحميل
-        clearForm();
-        hideLoader();
-        // إظهار رسالة نجاح
-       // alert('✅ تم الحذف بنجاح');
-    } catch (error) {
-        // إخفاء مؤشر التحميل في حالة الخطأ
-        hideLoader();
-
-        // إظهار رسالة الخطأ
-        alert('❌ فشل الحذف: ' + error.message);
-        console.error('Error Details:', error); // ⬅️ طباعة تفاصيل الخطأ
-    }
-
-}
-
-
-function updateTotalBillDisplayByDeletedId(id) {
-    const deletedEntry = allData.find(entry => entry.id === id);
-    if (deletedEntry) {
-        const remainingTotal = allData
-            .filter(item => item.building === deletedEntry.building)
-            .reduce((sum, item) => sum + parseFloat(item.totalBill || 0), 0);
-        
-        const totalBillElement = document.getElementById(`totalBill_${deletedEntry.building}`);
-        if (totalBillElement) {
-            totalBillElement.textContent = `${remainingTotal.toFixed(2)} ريال`;
-        }
-    }
-}
-/*****************************
- *   إدارة العمليات (إضافة/تعديل)   *
- *****************************/
-async function handleData() {
-    // التحقق من صحة النموذج أولاً
-    if (!validateForm()) return;
-    
-    try {
-        // إظهار مؤشر التحميل
-        showLoader();
-        const data = {
-            
-            building: currentBuilding,
+        // جمع البيانات من حقول النموذج
+        const entryData = {
+            building: selectedBuildingName, // استخدام اسم العمارة المحدد
             totalBill: document.getElementById('totalBill').value,
             reading: document.getElementById('reading').value,
             valueSAR: document.getElementById('valueSAR').value,
@@ -294,129 +332,213 @@ async function handleData() {
             paymentAmount: document.getElementById('paymentAmount').value,
             combo: document.getElementById('comboBox').value
         };
-        if (isEditMode && editIndex !== -1) {
-            data.id = editIndex; // ⬅️ استخدام editIndex الذي يحتوي على الـ ID
+
+        // بدء معاملة قراءة وكتابة
+        const transaction = databaseInstance.transaction([OBJECT_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(OBJECT_STORE_NAME);
+        let request;
+
+        // تحديد ما إذا كان يجب إضافة سجل جديد أو تحديث سجل موجود
+        if (isEditModeActive && editingEntryId !== null) {
+            entryData.id = editingEntryId; // إضافة المعرف للسجل لتحديثه
+            request = store.put(entryData); // استخدام put للتحديث (أو الإضافة إذا لم يكن موجودًا)
+            console.log(`جاري تحديث السجل بالمعرف: ${editingEntryId}`);
+        } else {
+            request = store.add(entryData); // استخدام add لإضافة سجل جديد
+            console.log('جاري إضافة سجل جديد.');
         }
-        // بدء معاملة قاعدة البيانات
-        const transaction = db.transaction([STORE_NAME], 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
 
-            if (isEditMode && data.id) { // استخدام الـ ID الموجود
-                await store.put(data);
-            } else {
-                await store.add(data);
-            }
-        // إعادة تحميل البيانات وتحديث الواجهة
-        await loadAllData();
-        updateTotalBillDisplay(currentBuilding);
+        // انتظار نتيجة عملية الحفظ/التحديث
+        await new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+
+        console.log('تمت عملية الحفظ/التحديث بنجاح.');
+
+        // إعادة تحميل جميع البيانات لتحديث الواجهة بالكامل
+        await loadAllEntries();
+        // تحديث عرض المبلغ الإجمالي للعمارة المتأثرة
+        updateTotalBillDisplayForBuilding(selectedBuildingName);
+        hideInputForm(); // إخفاء النموذج بعد الحفظ/التحديث
+
     } catch (error) {
-        // معالجة الأخطاء
-        console.error('فشلت العملية:', error);
-        alert('حدث خطأ أثناء الحفظ: ' + error.message);
+        console.error('فشلت عملية الحفظ/التحديث:', error);
+        alert('حدث خطأ أثناء الحفظ أو التحديث: ' + error.message);
+        hideGlobalLoader(); // التأكد من إخفاء المؤشر في حالة الخطأ
     } finally {
-        // إخفاء مؤشر التحميل في جميع الحالات
-        clearForm();
-        hideLoader();
-        isEditMode = false;
-        editIndex = -1;
+        // لا حاجة لإخفاء المؤشر هنا لأنه يتم في hideInputForm أو في catch
+        resetEditState(); // إعادة تعيين حالة التعديل دائمًا
     }
 }
 
-
-function populateComboBox(building) {
-    const combo = document.getElementById('comboBox');
-    combo.innerHTML = '';
-    if (comboBoxData[building]) {
-        comboBoxData[building].forEach(item => {
-            const option = document.createElement('option');
-            option.text = item;
-            combo.add(option);
-        });
+/**
+ * طلب تأكيد وحذف سجل من قاعدة البيانات.
+ * Requests confirmation and deletes an entry from the database.
+ * @param {number} entryId - معرف السجل المراد حذفه.
+ */
+async function requestDeleteEntry(entryId) {
+    const idToDelete = Number(entryId); // التأكد من أن المعرف رقم
+    if (isNaN(idToDelete)) {
+        console.error('معرف غير صالح للحذف:', entryId);
+        alert('حدث خطأ: معرف السجل غير صالح.');
+        return;
     }
-}
 
-/*****************************
- *      البحث في البيانات      *
- *****************************/
+    // طلب تأكيد من المستخدم قبل الحذف
+    if (!confirm(`هل أنت متأكد من حذف هذا السجل (ID: ${idToDelete})؟ لا يمكن التراجع عن هذا الإجراء.`)) {
+        return; // الخروج إذا ألغى المستخدم
+    }
 
-let searchTimeout;
-document.querySelector('.search-box').addEventListener('input', (e) => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        searchData(e.target.value);
-    }, 300); // تأخير 300ms
-});
-
-async function searchData(searchTerm) {
     try {
-        showLoader(); // هنا قبل البدء
-        const transaction = db.transaction([STORE_NAME], 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const index = store.index('building'); // ✅ استخدام الفهرس
-        const results = [];
-        
-        await new Promise((resolve) => {
-            const request = index.openCursor();
-            request.onsuccess = (event) => {
-                const cursor = event.target.result;
-                if (cursor) {
-                    const item = cursor.value;
-                    // البحث في جميع الحقول
-                    const match = Object.values(item).some(value => 
-                        String(value).toLowerCase().includes(searchTerm.toLowerCase())
-                    );
-                    if (match) results.push(item);
-                    cursor.continue();
-                } else {
-                    resolve();
-                }
-            };
+        showGlobalLoader(); // إظهار مؤشر التحميل
+
+        // بدء معاملة قراءة وكتابة
+        const transaction = databaseInstance.transaction([OBJECT_STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(OBJECT_STORE_NAME);
+
+        // العثور على السجل قبل الحذف لتحديث الإجمالي لاحقًا
+        const entryToDelete = allEntriesData.find(entry => entry.id === idToDelete);
+        const buildingNameToUpdate = entryToDelete ? entryToDelete.building : null;
+
+        // طلب حذف السجل باستخدام المعرف
+        const deleteRequest = store.delete(idToDelete);
+
+        // انتظار نتيجة عملية الحذف
+        await new Promise((resolve, reject) => {
+            deleteRequest.onsuccess = () => resolve();
+            deleteRequest.onerror = () => reject(deleteRequest.error);
         });
-        
-        currentData = results;
-        updateListView();
+
+        console.log(`تم حذف السجل بالمعرف: ${idToDelete} بنجاح.`);
+        // alert('✅ تم الحذف بنجاح'); // يمكن تفعيل هذه الرسالة إذا رغبت
+
+        // تحديث البيانات المحلية والواجهة
+        allEntriesData = allEntriesData.filter(entry => entry.id !== idToDelete);
+        currentlyDisplayedData = currentlyDisplayedData.filter(entry => entry.id !== idToDelete);
+        updateListViewDisplay(); // تحديث عرض القائمة
+
+        // تحديث المبلغ الإجمالي للعمارة التي تم حذف السجل منها
+        if (buildingNameToUpdate) {
+            updateTotalBillDisplayForBuilding(buildingNameToUpdate);
+        }
+
+        // إذا كان السجل المحذوف هو الذي يتم تعديله حاليًا، قم بإخفاء النموذج
+        if (isEditModeActive && editingEntryId === idToDelete) {
+            hideInputForm();
+        }
+
+    } catch (error) {
+        console.error('فشل حذف السجل:', error);
+        alert('❌ فشل الحذف: ' + error.message);
     } finally {
-        hideLoader(); // هنا في النهاية
+        hideGlobalLoader(); // إخفاء مؤشر التحميل
     }
 }
 
-function editEntry(id) {
+/**
+ * البحث عن السجلات التي تطابق مصطلح البحث في أي حقل.
+ * Searches for entries matching the search term in any field.
+ * @param {string} searchTerm - النص المراد البحث عنه.
+ */
+async function searchEntries(searchTerm) {
+    const lowerCaseSearchTerm = searchTerm.toLowerCase().trim(); // تحويل مصطلح البحث إلى أحرف صغيرة وإزالة المسافات
 
-    const data = allData.find(item => item.id === id); // ⬅️ البحث في allData
-    if (!data) return;
-    showForm(data.building);
-    document.getElementById('totalBill').value = data.totalBill;
-    document.getElementById('reading').value = data.reading;
-    document.getElementById('valueSAR').value = data.valueSAR;
-    document.getElementById('fromDate').value = data.fromDate;
-    document.getElementById('toDate').value = data.toDate;
-    document.getElementById('paymentAmount').value = data.paymentAmount;
-    document.getElementById('comboBox').value = data.combo;
-        // تحديث حالة التعديل
-        isEditMode = true;
-        editIndex = data.id; // ⬅️ استخدام الـ ID بدلاً من الفهرس
+    // إذا كان مربع البحث فارغًا، عرض جميع البيانات
+    if (!lowerCaseSearchTerm) {
+        currentlyDisplayedData = [...allEntriesData];
+        updateListViewDisplay();
+        return;
+    }
+
+    try {
+        showGlobalLoader(); // إظهار مؤشر التحميل أثناء البحث
+
+        // تصفية البيانات المحلية بناءً على مصطلح البحث
+        currentlyDisplayedData = allEntriesData.filter(entry => {
+            // التحقق من تطابق مصطلح البحث مع أي قيمة في حقول السجل
+            return Object.values(entry).some(value =>
+                String(value).toLowerCase().includes(lowerCaseSearchTerm)
+            );
+        });
+
+        updateListViewDisplay(); // تحديث عرض القائمة بالنتائج المصفاة
+
+    } catch (error) {
+        console.error('خطأ أثناء البحث:', error);
+        alert('حدث خطأ أثناء البحث.');
+        // في حالة الخطأ، يمكن اختيار عرض جميع البيانات أو ترك القائمة فارغة
+        currentlyDisplayedData = [...allEntriesData];
+        updateListViewDisplay();
+    } finally {
+        hideGlobalLoader(); // إخفاء مؤشر التحميل
+    }
 }
 
-function clearForm() {
-    // إفراغ الحقول
-    currentBuilding = '';
-    document.getElementById('totalBill').value = '';
-    document.getElementById('totalBill').disabled = true;
-    document.getElementById('reading').value = '';
-    document.getElementById('valueSAR').value = '';
-    document.getElementById('fromDate').value = '';
-    document.getElementById('toDate').value = '';
-    document.getElementById('paymentAmount').value = '';
-    document.getElementById('comboBox').value = ''; // إضافة هذا السطر إذا كنت تريد إفراغ القائمة المنسدلة أيضًا
 
-    // إعادة تعيين حالة التعديل
-    isEditMode = false;
-    editIndex = -1;
+/******************************************************************************
+ * إدارة الحالة                                 *
+ * State Management                             *
+ ******************************************************************************/
+
+/**
+ * تهيئة النموذج لعملية التعديل بناءً على معرف السجل.
+ * Prepares the form for editing based on the entry ID.
+ * @param {number} entryId - معرف السجل المراد تعديله.
+ */
+function prepareEditEntry(entryId) {
+    const idToEdit = Number(entryId);
+    // البحث عن السجل المطلوب في البيانات المحملة
+    const entryData = allEntriesData.find(item => item.id === idToEdit);
+
+    if (!entryData) {
+        console.error(`لم يتم العثور على سجل بالمعرف: ${idToEdit}`);
+        alert('تعذر العثور على السجل المحدد للتعديل.');
+        return;
+    }
+
+    // عرض النموذج وملء الحقول ببيانات السجل المحدد
+    displayInputForm(entryData.building); // عرض النموذج للعمارة الصحيحة
+
+    document.getElementById('totalBill').value = entryData.totalBill || '';
+    document.getElementById('totalBill').disabled = false; // تمكين حقل المبلغ الكلي عند التعديل
+    document.getElementById('reading').value = entryData.reading || '';
+    document.getElementById('valueSAR').value = entryData.valueSAR || '';
+    document.getElementById('fromDate').value = entryData.fromDate || '';
+    document.getElementById('toDate').value = entryData.toDate || '';
+    document.getElementById('paymentAmount').value = entryData.paymentAmount || '';
+    document.getElementById('comboBox').value = entryData.combo || ''; // تحديد الخيار الصحيح في القائمة المنسدلة
+
+    // تفعيل وضع التعديل وتخزين معرف السجل
+    isEditModeActive = true;
+    editingEntryId = idToEdit; // استخدام المعرف الرقمي
+
+    console.log(`تم تجهيز النموذج لتعديل السجل بالمعرف: ${idToEdit}`);
 }
 
+/**
+ * إعادة تعيين حالة التعديل.
+ * Resets the edit mode state.
+ */
+function resetEditState() {
+    isEditModeActive = false;
+    editingEntryId = null;
+    selectedBuildingName = ''; // إعادة تعيين اسم العمارة المحدد أيضًا
+    console.log('تم إعادة تعيين حالة التعديل.');
+}
 
-function validateForm() {
-    // جلب قيم جميع الحقول
+/******************************************************************************
+ * التحقق من الصحة                              *
+ * Validation                                *
+ ******************************************************************************/
+
+/**
+ * التحقق من صحة البيانات المدخلة في النموذج.
+ * Validates the data entered in the form.
+ * @returns {boolean} - `true` إذا كانت البيانات صالحة، وإلا `false`.
+ */
+function validateInputForm() {
+    // جلب قيم الحقول
     const totalBill = document.getElementById('totalBill').value.trim();
     const reading = document.getElementById('reading').value.trim();
     const valueSAR = document.getElementById('valueSAR').value.trim();
@@ -425,186 +547,326 @@ function validateForm() {
     const paymentAmount = document.getElementById('paymentAmount').value.trim();
     const combo = document.getElementById('comboBox').value;
 
-    // قائمة الحقول المطلوبة
+    // قائمة الحقول المطلوبة مع أسمائها العربية للرسائل
     const requiredFields = [
-        { value: totalBill, name: 'المبلغ الكلي' },
+        { value: totalBill, name: 'المبلغ الكلي للفاتورة' },
         { value: reading, name: 'القراءة' },
         { value: valueSAR, name: 'القيمة بالريال' },
-        { value: fromDate, name: 'التاريخ من' },
-        { value: toDate, name: 'التاريخ إلى' },
+        { value: fromDate, name: 'الفترة من' },
+        { value: toDate, name: 'الفترة إلى' },
         { value: paymentAmount, name: 'مبلغ السداد' },
-        { value: combo, name: 'العداد التجاري' }
+        { value: combo, name: 'العداد التجاري' } // التأكد من اختيار قيمة من القائمة
     ];
 
     // التحقق من الحقول الفارغة
     const emptyFields = requiredFields.filter(field => !field.value);
-
     if (emptyFields.length > 0) {
-        const errorMessage = 
-            '❗ الحقول التالية مطلوبة:\n' +
-            emptyFields.map(field => `- ${field.name}`).join('\n');
-        
+        const errorMessage = '❗ الحقول التالية مطلوبة:\n' +
+                             emptyFields.map(field => `- ${field.name}`).join('\n');
         alert(errorMessage);
-        return false;
+        return false; // إيقاف العملية إذا كانت هناك حقول فارغة
     }
 
-    // التحقق من أن الحقول الرقمية تحتوي على أرقام
+    // التحقق من أن الحقول الرقمية تحتوي على أرقام صالحة
     const numericFields = [
-        { value: totalBill, name: 'المبلغ الكلي' },
+        { value: totalBill, name: 'المبلغ الكلي للفاتورة' },
         { value: reading, name: 'القراءة' },
         { value: valueSAR, name: 'القيمة بالريال' },
         { value: paymentAmount, name: 'مبلغ السداد' }
     ];
 
-    const invalidNumericFields = numericFields.filter(field => 
-        isNaN(parseFloat(field.value))
-    );
-
+    const invalidNumericFields = numericFields.filter(field => isNaN(parseFloat(field.value)));
     if (invalidNumericFields.length > 0) {
-        const errorMessage = 
-            '❌ الحقول التالية يجب أن تحتوي على أرقام:\n' +
-            invalidNumericFields.map(field => `- ${field.name}`).join('\n');
-        
+        const errorMessage = '❌ الحقول التالية يجب أن تحتوي على أرقام صالحة:\n' +
+                             invalidNumericFields.map(field => `- ${field.name}`).join('\n');
         alert(errorMessage);
-        return false;
+        return false; // إيقاف العملية إذا كانت هناك أرقام غير صالحة
     }
 
-    // التحقق من صحة التواريخ
-    if (new Date(fromDate) > new Date(toDate)) {
-        alert('⚠️ تاريخ البداية لا يمكن أن يكون بعد تاريخ النهاية');
-        return false;
+    // التحقق من صحة التواريخ (تاريخ البداية يجب أن يكون قبل أو نفس تاريخ النهاية)
+    if (fromDate && toDate && new Date(fromDate) > new Date(toDate)) {
+        alert('⚠️ تاريخ البداية لا يمكن أن يكون بعد تاريخ النهاية.');
+        return false; // إيقاف العملية إذا كان ترتيب التواريخ غير صحيح
     }
 
+    // إذا وصلت إلى هنا، فالبيانات صالحة
     return true;
 }
-window.onbeforeunload = function() {
-    if (currentData.length > 0) return 'لديك تغييرات غير محفوظة!';
-};
 
-/*****************************
- *      وظائف مساعدة      *
- *****************************/
-function resetListView() {
-    currentData = [...allData];
-    updateListView(); // إعادة تعيين القائمة لعرض جميع البيانات
+/******************************************************************************
+ * المصادقة                                 *
+ * Authentication                             *
+ ******************************************************************************/
+
+/**
+ * محاولة تسجيل دخول المستخدم.
+ * Attempts to log in the user.
+ */
+async function attemptLogin() {
+    try {
+        showGlobalLoader(); // إظهار المؤشر قبل التحقق
+        const usernameInput = document.getElementById('username').value;
+        const passwordInput = document.getElementById('password').value;
+
+        // التحقق من عدم ترك الحقول فارغة
+        if (!usernameInput || !passwordInput) {
+            alert('الرجاء إدخال اسم المستخدم وكلمة المرور.');
+            hideGlobalLoader();
+            return;
+        }
+
+        // تشفير كلمة المرور المدخلة باستخدام SHA-256 للمقارنة الآمنة
+        const hashedPasswordInput = CryptoJS.SHA256(passwordInput).toString();
+
+        // بيانات المستخدمين الصالحة (يجب تخزينها بشكل آمن في بيئة الإنتاج)
+        // كلمة المرور '123' مشفرة بـ SHA-256
+        const validUsersCredentials = {
+            admin: 'a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3'
+        };
+
+        // التحقق مما إذا كان اسم المستخدم موجودًا وكلمة المرور المشفرة متطابقة
+        if (validUsersCredentials[usernameInput] && validUsersCredentials[usernameInput] === hashedPasswordInput) {
+            console.log('تسجيل الدخول ناجح.');
+            // تخزين توكن أو علامة في sessionStorage للإشارة إلى أن المستخدم مسجل دخوله
+            sessionStorage.setItem('authToken', 'user_is_authenticated'); // استخدام قيمة بسيطة أو توكن حقيقي
+            // إعادة تحميل الصفحة لإظهار لوحة التحكم وتطبيق التغييرات
+            location.reload();
+        } else {
+            console.warn('محاولة تسجيل دخول فاشلة.');
+            alert('بيانات الدخول غير صحيحة!');
+            hideGlobalLoader(); // إخفاء المؤشر في حالة فشل تسجيل الدخول
+        }
+    } catch (error) {
+        console.error('حدث خطأ أثناء محاولة تسجيل الدخول:', error);
+        alert('فشل تسجيل الدخول: ' + error.message);
+        hideGlobalLoader(); // إخفاء المؤشر في حالة حدوث خطأ غير متوقع
+    }
+    // لا حاجة لإخفاء المؤشر هنا لأنه يتم إخفاؤه في حالات الفشل أو عند إعادة التحميل
 }
 
-function updateListView() {
-    const listContent = document.getElementById('listContent');
-    listContent.innerHTML = '';
-    
-    currentData.forEach((data) => {
-        const row = document.createElement('tr');
-        row.className = 'list-item';
-        row.setAttribute('data-id', data.id);
-        row.innerHTML = `
-            <td>${data.building}</td>
-            <td>${data.totalBill}</td>
-            <td>${data.reading}</td>
-            <td>${data.valueSAR}</td>
-            <td>${data.fromDate}</td>
-            <td>${data.toDate}</td>
-            <td>${data.paymentAmount}</td>
-            <td>${data.combo}</td>
-                <td>
-        <button onclick="deleteEntry(this.closest('tr').getAttribute('data-id'))" class="delete-btn">
-            <i class="fas fa-trash"></i> حذف
-        </button>
-    </td>
-        `;
-        row.addEventListener('click', () => {
-            const id = parseInt(row.getAttribute('data-id')); // ⬅️ استرجاع الـ ID
-            editEntry(id);
-        });
-        row.onclick = () => editEntry(data.id); // تمرير الـ ID بدلاً من الفهرس
-        listContent.appendChild(row);
-    });
+/**
+ * تسجيل خروج المستخدم.
+ * Logs out the current user.
+ */
+function logoutUser() {
+    sessionStorage.clear(); // مسح جميع بيانات الجلسة (بما في ذلك التوكن)
+    // إعادة توجيه المستخدم إلى صفحة تسجيل الدخول أو الصفحة الرئيسية
+    // location.href = 'login.html'; // أو index.html إذا كانت هي صفحة البداية
+    location.reload(); // إعادة التحميل سيعيد المستخدم لواجهة الدخول لأن التوكن غير موجود
+    console.log('تم تسجيل الخروج.');
 }
 
-function updateFilteredListView(filteredData) {
-    const listContent = document.getElementById('listContent');
-    listContent.innerHTML = ''; // إفراغ القائمة الحالية
+/******************************************************************************
+ * وظائف مساعدة أخرى                             *
+ * Helper Functions                              *
+ ******************************************************************************/
 
-    // عرض البيانات المصفاة
-    filteredData.forEach((data) => {
-        const row = document.createElement('tr');
-        row.className = 'list-item';
-        row.innerHTML = `
-            <td>${data.building}</td>
-            <td>${data.totalBill}</td>
-            <td>${data.reading}</td>
-            <td>${data.valueSAR}</td>
-            <td>${data.fromDate}</td>
-            <td>${data.toDate}</td>
-            <td>${data.paymentAmount}</td>
-            <td>${data.combo}</td>
-        `;
-        listContent.appendChild(row);
-    });
+/**
+ * إعادة تعيين عرض القائمة لعرض جميع السجلات.
+ * Resets the list view to display all entries.
+ */
+function resetListViewToAllEntries() {
+    currentlyDisplayedData = [...allEntriesData]; // استعادة جميع البيانات للعرض
+    updateListViewDisplay(); // تحديث الواجهة
+    document.querySelector('.search-box').value = ''; // مسح مربع البحث
+    console.log('تمت إعادة تعيين القائمة لعرض جميع السجلات.');
 }
 
-function filterByBuilding(building) {
-    const filteredData = allData.filter(item => item.building === building);
-    currentData = filteredData;
-    updateListView();
-
+/**
+ * تصفية عرض القائمة لعرض سجلات عمارة معينة فقط.
+ * Filters the list view to show entries for a specific building only.
+ * @param {string} buildingName - اسم العمارة المراد تصفية السجلات بها.
+ */
+function filterListViewByBuilding(buildingName) {
+    currentlyDisplayedData = allEntriesData.filter(item => item.building === buildingName);
+    updateListViewDisplay();
+    console.log(`تم تصفية القائمة لعرض سجلات: ${buildingName}`);
 }
 
-function showForm(building) {
-    // تعيين العمارة الحالية وعنوان النموذج
-    currentBuilding = building;
-    document.getElementById('buildingTitle').textContent = building;
+/**
+ * تصدير البيانات المعروضة حاليًا إلى ملف CSV.
+ * Exports the currently displayed data to a CSV file.
+ */
+function exportCurrentDataToExcel() {
+    if (currentlyDisplayedData.length === 0) {
+        alert('لا توجد بيانات لتصديرها.');
+        return;
+    }
 
-    // إظهار النموذج بتأثير
-    const formContainer = document.getElementById('formContainer');
-    formContainer.classList.add('show'); // إضافة تأثير (إذا كان مدعومًا)
-    formContainer.style.display = 'block'; // إظهار النموذج
-
-    // تعبئة القائمة المنسدلة (ComboBox)
-    populateComboBox(building);
-}
-
-function exportToExcel() {
-    const data = currentData;
+    // تحديد رؤوس الأعمدة باللغة العربية
     const headers = ["اسم العمارة", "المبلغ الكلي", "القراءة", "القيمة بالريال", "التاريخ من", "التاريخ إلى", "مبلغ السداد", "العداد التجاري"];
-    const rows = data.map(item => [
-        item.building,
-        item.totalBill,
-        item.reading,
-        item.valueSAR,
-        item.fromDate,
-        item.toDate,
-        item.paymentAmount,
-        item.combo
+    // تحويل بيانات كل سجل إلى صف في CSV
+    const rows = currentlyDisplayedData.map(item => [
+        `"${item.building || ''}"`, // إضافة علامات اقتباس للتعامل مع الفواصل المحتملة
+        item.totalBill || 0,
+        item.reading || 0,
+        item.valueSAR || 0,
+        item.fromDate || '',
+        item.toDate || '',
+        item.paymentAmount || 0,
+        `"${item.combo || ''}"`
     ]);
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-        + headers.join(",") + "\n" 
-        + rows.map(row => row.join(",")).join("\n");
+    // إنشاء محتوى CSV
+    // استخدام فاصلة منقوطة (;) قد يكون أفضل للتوافق مع Excel في بعض الإعدادات الإقليمية العربية
+    const csvContent = "data:text/csv;charset=utf-8," +
+                       headers.join(";") + "\n" + // استخدام فاصلة منقوطة
+                       rows.map(row => row.join(";")).join("\n"); // استخدام فاصلة منقوطة
 
+    // إنشاء رابط تنزيل وهمي والنقر عليه
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "عقارات.csv");
-    document.body.appendChild(link);
+    link.setAttribute("download", "بيانات_العقارات.csv"); // اسم ملف التنزيل
+    document.body.appendChild(link); // ضروري لبعض المتصفحات
     link.click();
-    document.body.removeChild(link);
-}
-function goBack() {
-    clearForm(); // إفراغ الحقول
-    document.getElementById('formContainer').style.display = 'none'; // إخفاء النموذج
+    document.body.removeChild(link); // إزالة الرابط بعد النقر
+
+    console.log('تم تصدير البيانات إلى ملف CSV.');
 }
 
-// دالة لتحديث عرض المبلغ الكلي بجانب الزر
-function updateTotalBillDisplay(building) {
-    // حساب المبلغ الإجمالي من البيانات الحالية
-    const total = allData
-        .filter(item => item.building === building)
-        .reduce((sum, item) => sum + parseFloat(item.totalBill || 0), 0);
+/******************************************************************************
+ * إعدادات ومستمعي الأحداث                           *
+ * Setup and Event Listeners                          *
+ ******************************************************************************/
+// متغير لتأخير البحث أثناء الكتابة
+let searchDebounceTimer;
 
-    // تحديث العرض بجانب الزر
-    const totalBillElement = document.getElementById(`totalBill_${building}`);
-    if (totalBillElement) {
-        totalBillElement.textContent = `${total.toFixed(2)} ريال`; // عرض المبلغ مع خانتين عشريتين
+document.addEventListener('DOMContentLoaded', async () => {
+    // التحقق مما إذا كان المستخدم مسجل دخوله عند تحميل الصفحة
+    if (sessionStorage.getItem('authToken') === 'user_is_authenticated') {
+        try {
+            showGlobalLoader(); // إظهار المؤشر أثناء التهيئة
+            // إخفاء واجهة الدخول وإظهار لوحة التحكم
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+
+            // تهيئة قاعدة البيانات أولاً
+            databaseInstance = await initializeDatabase();
+
+            // ثم تحميل البيانات وعرضها
+            await loadAllEntries();
+
+            // ربط الأحداث بعناصر الواجهة
+            setupEventListeners();
+
+        } catch (error) {
+            console.error('فشل تهيئة التطبيق بعد تسجيل الدخول:', error);
+            alert('تعذر تهيئة التطبيق بشكل صحيح. قد تحتاج إلى إعادة تسجيل الدخول.');
+            // يمكن إضافة منطق لإعادة المستخدم لصفحة الدخول هنا
+            logoutUser(); // تسجيل الخروج في حالة فشل التهيئة
+        } finally {
+            hideGlobalLoader(); // إخفاء المؤشر دائمًا بعد محاولة التهيئة
+        }
+    } else {
+        // إذا لم يكن المستخدم مسجل دخوله، تأكد من إظهار واجهة الدخول فقط
+        document.getElementById('loginContainer').style.display = 'block';
+        document.getElementById('dashboard').style.display = 'none';
+        // ربط حدث زر الدخول
+        const loginButton = document.querySelector('#loginContainer button');
+        if (loginButton) {
+            loginButton.addEventListener('click', attemptLogin);
+        }
+        // ربط حدث الضغط على Enter في حقل كلمة المرور
+        const passwordInput = document.getElementById('password');
+        if (passwordInput) {
+            passwordInput.addEventListener('keypress', (event) => {
+                if (event.key === 'Enter') {
+                    attemptLogin();
+                }
+            });
+        }
+        console.log('المستخدم غير مسجل دخوله، تم عرض واجهة الدخول.');
     }
+});
+
+/**
+ * إعداد جميع مستمعي الأحداث لعناصر واجهة المستخدم في لوحة التحكم.
+ * Sets up all event listeners for UI elements in the dashboard.
+ */
+function setupEventListeners() {
+    // زر تمكين حقل المبلغ الكلي
+    const enableTotalBillButton = document.getElementById('enableTotalBill');
+    if (enableTotalBillButton) {
+        enableTotalBillButton.addEventListener('click', () => {
+            const totalBillInput = document.getElementById('totalBill');
+            totalBillInput.disabled = false; // تمكين الحقل
+            totalBillInput.focus(); // وضع المؤشر داخل الحقل
+        });
+    }
+
+    // أزرار العمارات (لإظهار النموذج والتصفية)
+    const buildingButtons = document.querySelectorAll('.building-buttons .bttn');
+    buildingButtons.forEach(button => {
+        // استخلاص اسم العمارة من النص أو من خاصية مخصصة إذا أضفتها
+        // نفترض أن النص يحتوي فقط على اسم العمارة أو يمكن تعديل هذا
+        const buildingName = button.textContent.trim().split('\n')[0].trim(); // محاولة استخلاص الاسم
+        if (buildingName) {
+            // حدث النقر على الزر الرئيسي لإظهار النموذج
+            button.addEventListener('click', () => displayInputForm(buildingName));
+
+            // حدث النقر على عنصر span لعرض الإجمالي (للتصفية)
+            const totalSpan = button.querySelector('.total-bill-display');
+            if (totalSpan) {
+                totalSpan.addEventListener('click', (event) => {
+                    event.stopPropagation(); // منع ظهور النموذج عند النقر على الإجمالي
+                    filterListViewByBuilding(buildingName);
+                });
+            }
+        } else {
+            console.warn('لم يتم العثور على اسم عمارة صالح للزر:', button);
+        }
+    });
+
+    // مربع البحث (مع تأخير debounce)
+    const searchInput = document.querySelector('.search-box');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchDebounceTimer); // إلغاء المؤقت السابق
+            // بدء مؤقت جديد لتنفيذ البحث بعد فترة قصيرة من التوقف عن الكتابة
+            searchDebounceTimer = setTimeout(() => {
+                searchEntries(e.target.value);
+            }, 300); // تأخير 300 مللي ثانية
+        });
+    }
+
+    // زر تسجيل الخروج
+    const logoutButton = document.querySelector('.logout-btn');
+    if (logoutButton) {
+        logoutButton.addEventListener('click', logoutUser);
+    }
+
+    // أزرار نموذج الإدخال/التعديل
+    const saveButton = document.querySelector('#formContainer button:nth-of-type(1)'); // زر الحفظ
+    if (saveButton) {
+        saveButton.addEventListener('click', saveOrUpdateEntry);
+    }
+
+    const viewAllButton = document.querySelector('#formContainer button:nth-of-type(2)'); // زر عرض الكل
+    if (viewAllButton) {
+        viewAllButton.addEventListener('click', resetListViewToAllEntries);
+    }
+
+    // يمكن إضافة زر للرجوع أو الإلغاء هنا إذا أضفته في HTML
+    // مثال:
+    // const backButton = document.getElementById('backButton');
+    // if (backButton) {
+    //     backButton.addEventListener('click', hideInputForm);
+    // }
+
+    // زر تصدير إلى Excel (إذا أضفته)
+    const exportButton = document.getElementById('exportButton'); // افترض أن لديك زر بهذا الـ ID
+    if (exportButton) {
+        exportButton.addEventListener('click', exportCurrentDataToExcel);
+    }
+
+    console.log('تم إعداد مستمعي الأحداث.');
 }
+
+// تحذير قبل مغادرة الصفحة إذا كانت هناك تغييرات غير محفوظة (اختياري)
+// window.onbeforeunload = function() {
+//     // يمكن إضافة منطق للتحقق مما إذا كان النموذج مفتوحًا وبه تغييرات
+//     if (isEditModeActive) { // مثال بسيط
+//         return 'لديك تغييرات غير محفوظة في النموذج. هل أنت متأكد من المغادرة؟';
+//     }
+// };
